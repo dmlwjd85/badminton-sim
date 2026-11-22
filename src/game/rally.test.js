@@ -72,8 +72,26 @@ test('결정적 순간: 스매시 위닝은 스매시 폭격, 긴 랠리는 마�
   const a = mk('a1'); const b = mk('b1');
   const sh = (side, type, extra = {}) => ({ hitter: side === 'A' ? a : b, side, type, q: 0.6, d: 3.5, y: 0.5, err: null, winner: false, receiver: side === 'A' ? b : a, D: 1, notes: [], ...extra });
   const r1 = { shots: [sh('A', 'serveShort'), sh('B', 'lift'), sh('A', 'smash', { winner: true })], winner: 'A', reason: 'winner' };
-  assert.ok(rallyHighlights(r1, false).some((h) => h.key === 'smashBomb'));
+  assert.ok(rallyHighlights(r1, false, (p, k) => p[k], () => 0).some((h) => h.key === 'smashBomb'));
   const long = Array.from({ length: 16 }, (_, i) => sh(i % 2 ? 'B' : 'A', 'clear'));
   long[15] = sh('B', 'drop', { winner: true, q: 0.2 });
-  assert.ok(rallyHighlights({ shots: long, winner: 'B', reason: 'winner' }, false).some((h) => h.key === 'marathon'));
+  assert.ok(rallyHighlights({ shots: long, winner: 'B', reason: 'winner' }, false, (p, k) => p[k], () => 0).some((h) => h.key === 'marathon'));
+});
+
+test('결정적 순간 확률은 능력치를 따라가요: 높으면 자주, 낮으면 드물게', async () => {
+  const { hlChance, HL_RULES } = await import('./sim/rally.js');
+  const e = (p, k) => p[k];
+  assert.equal(hlChance('smashBomb', [mk('x', 65)], e), HL_RULES.smashBomb.base);
+  assert.ok(hlChance('smashBomb', [mk('x', 85)], e) > HL_RULES.smashBomb.base * 1.8);
+  assert.ok(hlChance('smashBomb', [mk('x', 45)], e) < HL_RULES.smashBomb.base * 0.4);
+});
+
+test('실수 이름표: 서브 실수는 서브 폴트, 서브 능력치가 낮을수록 잘 나와요', async () => {
+  const { rallyHighlights, hlChance } = await import('./sim/rally.js');
+  const a = mk('a1'); const b = mk('b1');
+  const r = { shots: [{ hitter: a, side: 'A', type: 'serveShort', q: 0.3, d: 0.15, y: 0.7, err: 'net', winner: false, notes: [] }], winner: 'B', reason: 'error' };
+  assert.ok(rallyHighlights(r, false, (p, k) => p[k], () => 0).some((h) => h.key === 'serveFault' && h.blunder && h.side === 'A'));
+  const e = (p, k) => p[k];
+  assert.ok(hlChance('serveFault', [mk('x', 45)], e) > hlChance('serveFault', [mk('x', 85)], e) * 4);
+  void b;
 });

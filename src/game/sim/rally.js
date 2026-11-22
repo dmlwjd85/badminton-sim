@@ -267,7 +267,7 @@ export function simulateRally(opts) {
       }
       if (sty === 'attack' && !usedNotes.has('patience') && (type === 'smash' || type === 'kill')) notes.push('patience');
       shots.push({ hitter, side, type, stroke, d: kind === 'net' ? 0.15 : ld, y: ly, q, err: kind, winner: false, notes, pos: snap(), form: { ...form } });
-      return { shots, winner: oppSide, reason: 'error', last: hitter };
+      return { shots, winner: oppSide, reason: 'error', last: hitter, pressure: !!opts.pressure };
     }
 
     // 5) 받는 사람 & 진형
@@ -340,7 +340,7 @@ export function simulateRally(opts) {
     notes.forEach((k) => usedNotes.add(k));
     shots.push({ hitter, side, type, stroke, d: td, y: ty, q, err: null, winner: won, receiver: recv, D, recvStroke, notes, pos: snap(), form: { ...form } });
     prevByHitter[hitter.id] = type;
-    if (won) return { shots, winner: side, reason: 'winner', last: hitter };
+    if (won) return { shots, winner: side, reason: 'winner', last: hitter, pressure: !!opts.pressure };
     // 7) 받는 사람이 셔틀 쪽으로
     pos[recv.id] = { d: td, y: ty };
     if (doubles) {
@@ -377,53 +377,123 @@ export const HIGHLIGHTS = {
   ironWall: { name: '철벽 수비', en: 'IRON WALL', icon: '🧱', kind: 'defense', color: '#94a3b8', desc: '스매시를 3번 이상 버티고 끝내 점수를 낸 랠리' },
   counter: { name: '역습 성공', en: 'COUNTER!', icon: '🔄', kind: 'defense', color: '#34d399', desc: '스매시를 받아 내고 거꾸로 점수를 낸 랠리' },
   marathon: { name: '마라톤 랠리', en: 'MARATHON', icon: '🔁', kind: 'rally', color: '#fbbf24', desc: '15번 넘게 주고받은 긴 랠리' },
+  // ── 실수 (능력치가 낮을수록 잘 나와요) ──
+  serveFault: { name: '서브 폴트', en: 'SERVICE FAULT', icon: '🙅', kind: 'blunder', color: '#f87171', desc: '서브가 네트에 걸리거나 서비스 코트 밖으로 나간 실수' },
+  intoNet: { name: '네트 헌납', en: 'INTO THE NET', icon: '🕸️', kind: 'blunder', color: '#fb7185', desc: '세게 치려다 셔틀이 네트에 걸린 실수' },
+  homeRun: { name: '홈런', en: 'HOME RUN', icon: '⚾', kind: 'blunder', color: '#fca5a5', desc: '너무 세게 올려서 끝선 밖으로 날아간 실수' },
+  sideOut: { name: '사이드 아웃', en: 'WIDE!', icon: '↔️', kind: 'blunder', color: '#fda4af', desc: '구석을 노리다 옆줄 밖으로 나간 실수' },
+  backhandMiss: { name: '백핸드 삐끗', en: 'BACKHAND MISS', icon: '😖', kind: 'blunder', color: '#f9a8d4', desc: '백핸드로 치다 제대로 못 넘긴 실수' },
+  choke: { name: '긴장 실수', en: 'CHOKE', icon: '😰', kind: 'blunder', color: '#fdba74', desc: '게임 막판에 긴장해서 나온 실수' },
+  airShot: { name: '헛스윙', en: 'AIR SHOT', icon: '🙈', kind: 'blunder', color: '#fca5a5', desc: '바로 앞에 온 셔틀인데 라켓에 못 맞힌 실수' },
+  afterYou: { name: '서로 미루기', en: 'AFTER YOU!', icon: '🤷', kind: 'blunder', color: '#fdba74', desc: '복식 두 사람 사이로 온 셔틀을 서로 미루다 놓친 실수' },
+  lateFoot: { name: '한발 늦음', en: 'TOO LATE', icon: '🐢', kind: 'blunder', color: '#fcd34d', desc: '발이 늦어서 셔틀까지 못 간 실수' },
+  shortLift: { name: '짧은 로브', en: 'SHORT LIFT', icon: '📉', kind: 'blunder', color: '#f87171', desc: '짧게 올려 줘서 상대에게 스매시 찬스를 준 실수' },
 };
 
 const SMASHY = new Set(['smash', 'kill']);
 
+/**
+ * 결정적 순간이 붙을 확률: 그 장면에 쓰인 능력치가 높을수록 잘 나와요.
+ * 능력치 평균 65면 base 그대로, 80이면 약 1.9배, 50이면 약 0.45배
+ */
+export const HL_RULES = {
+  ace: { keys: ['dis', 'cmp'], base: 0.3 },
+  flickAmbush: { keys: ['dis', 'cmp'], base: 0.45 },
+  combo: { keys: ['sho', 'int'], base: 0.9 },
+  netKill: { keys: ['int', 'ref'], base: 0.35 },
+  smashBomb: { keys: ['sho'], base: 0.3 },
+  barrage: { keys: ['sho', 'phy'], base: 0.7 },
+  trickDrop: { keys: ['dri'], base: 0.4 },
+  magicNet: { keys: ['dri', 'int'], base: 0.25 },
+  laser: { keys: ['wrk'], base: 0.18 },
+  lineSnipe: { keys: ['pst', 'cmp'], base: 0.7 },
+  backhandHunt: { keys: ['pst', 'pas'], base: 0.35 },
+  superReceive: { keys: ['def', 'ref'], base: 0.3 },
+  diveSave: { keys: ['pac', 'ref'], base: 0.18 },
+  ironWall: { keys: ['def', 'phy'], base: 0.8 },
+  counter: { keys: ['def', 'ref'], base: 0.25 },
+  marathon: { keys: ['phy', 'cmp'], base: 0.45 },
+  // 실수: invert — 능력치가 낮을수록 확률이 올라가요
+  serveFault: { keys: ['dis', 'cmp'], base: 0.5, invert: true },
+  intoNet: { keys: ['sho', 'int', 'cmp'], base: 0.2, invert: true },
+  homeRun: { keys: ['pas'], base: 0.3, invert: true },
+  sideOut: { keys: ['pst', 'cmp'], base: 0.25, invert: true },
+  backhandMiss: { keys: ['def', 'pas'], base: 0.25, invert: true },
+  choke: { keys: ['cmp'], base: 0.4, invert: true },
+  airShot: { keys: ['ref', 'cmp'], base: 0.18, invert: true },
+  afterYou: { keys: ['pst'], base: 0.3, invert: true },
+  lateFoot: { keys: ['pac'], base: 0.12, invert: true },
+  shortLift: { keys: ['pas'], base: 0.3, invert: true },
+};
+export function hlChance(key, players, eff) {
+  const R = HL_RULES[key];
+  const list = (players || []).filter(Boolean);
+  if (!R || !list.length) return R ? R.base : 0;
+  const avg = list.reduce((sum, p) => sum + R.keys.reduce((t, k) => t + eff(p, k), 0) / R.keys.length, 0) / list.length;
+  return clamp(R.base * Math.pow(R.invert ? 65 / Math.max(30, avg) : avg / 65, 3), 0.02, 0.95);
+}
+
 /** 랠리 하나에서 나온 결정적 순간들. at: 몇 번째 샷에서 나왔는지 (수비 장면은 랠리 중간에 보여 줘요) */
-export function rallyHighlights(r, doubles) {
+export function rallyHighlights(r, doubles, eff = (p, k) => Number(p[k]) || 60, rng = Math.random) {
   const out = [];
   const shots = r.shots;
   const last = shots[shots.length - 1];
   const W = r.winner;
+  const roll = (key, players) => rng() < hlChance(key, players, eff);
+  const winners = shots.filter((s) => s.side === W).map((s) => s.hitter);
+  const team = [...new Map(winners.map((p) => [p.id, p])).values()];
   // 랠리 중간: 수비 장면
   shots.forEach((sh, i) => {
     if (sh.err || sh.winner || !sh.receiver) return;
     const def = sh.side === 'A' ? 'B' : 'A';
     const next = shots[i + 1];
-    const returned = next && !next.err;
-    if (!returned) return;
-    if (SMASHY.has(sh.type) && sh.q >= 0.6) out.push({ key: 'superReceive', side: def, player: sh.receiver, at: i });
-    else if (sh.D >= (doubles ? 2.5 : 3.1) && sh.q >= 0.5 && !UP.has(sh.type)) out.push({ key: 'diveSave', side: def, player: sh.receiver, at: i });
+    if (!next || next.err) return;
+    if (SMASHY.has(sh.type) && sh.q >= 0.5) { if (roll('superReceive', [sh.receiver])) out.push({ key: 'superReceive', side: def, player: sh.receiver, at: i }); } else if (sh.D >= (doubles ? 2.5 : 3.1) && !UP.has(sh.type) && roll('diveSave', [sh.receiver])) out.push({ key: 'diveSave', side: def, player: sh.receiver, at: i });
   });
   if (r.reason === 'winner') {
     const t = last.type;
     const p = last.hitter;
-    const prev = shots[shots.length - 2];
     const prev2 = shots[shots.length - 3];
     let key = null;
-    if (t === 'serveShort' || (t === 'serveLong' && last.q >= 0.6)) key = 'ace';
+    if (t === 'serveShort' || t === 'serveLong') key = 'ace';
     else if (t === 'flick') key = 'flickAmbush';
     else if (t === 'kill' && doubles && prev2 && prev2.side === W && prev2.type === 'smash' && prev2.hitter.id !== p.id) key = 'combo';
     else if (t === 'kill') key = 'netKill';
-    else if (t === 'smash' && last.q >= 0.4) key = 'smashBomb';
-    else if (t === 'drop' && last.q >= 0.45) key = 'trickDrop';
-    else if ((t === 'net' || t === 'block') && last.q >= 0.55) key = 'magicNet';
-    else if ((t === 'drive' || t === 'push') && last.q >= 0.5) key = 'laser';
+    else if (t === 'smash') key = 'smashBomb';
+    else if (t === 'drop') key = 'trickDrop';
+    else if (t === 'net' || t === 'block') key = 'magicNet';
+    else if (t === 'drive' || t === 'push') key = 'laser';
     const sideLine = doubles ? Math.min(last.y, 1 - last.y) * COURT_W : Math.min(Math.abs(last.y - SINGLES_IN), Math.abs(1 - SINGLES_IN - last.y)) * COURT_W;
     const backLine = Math.abs(6.7 - last.d);
     if ((sideLine < 0.18 || backLine < 0.2) && (!key || key === 'laser' || key === 'trickDrop' || t === 'clear' || t === 'lift')) key = 'lineSnipe';
     if (last.recvStroke === 'bh' && last.d > 4.2 && (!key || key === 'lineSnipe')) key = 'backhandHunt';
-    if (key) out.push({ key, side: W, player: p, at: shots.length - 1, final: true });
-    const smashes = shots.filter((s) => s.side === W && SMASHY.has(s.type)).length;
-    if (smashes >= 3 && key !== 'combo') out.push({ key: 'barrage', side: W, player: p, at: shots.length - 1, final: true });
-    void prev;
+    const who = key === 'combo' ? [prev2.hitter, p] : [p];
+    if (key && roll(key, who)) out.push({ key, side: W, player: p, at: shots.length - 1, final: true });
+    const smashes = shots.filter((x) => x.side === W && SMASHY.has(x.type));
+    if (smashes.length >= 3 && key !== 'combo' && roll('barrage', smashes.map((x) => x.hitter))) out.push({ key: 'barrage', side: W, player: p, at: shots.length - 1, final: true });
   }
   // 수비하던 쪽이 이김
-  const faced = shots.filter((s) => s.side !== W && SMASHY.has(s.type) && !s.err).length;
-  if (faced >= 3) out.push({ key: 'ironWall', side: W, player: last.side === W ? last.hitter : (shots.filter((s) => s.side === W).pop() || last).hitter, at: shots.length - 1, final: true });
-  else if (faced >= 1 && r.reason === 'winner' && !SMASHY.has(last.type) && shots.some((s, i) => s.side !== W && SMASHY.has(s.type) && i < shots.length - 1)) out.push({ key: 'counter', side: W, player: last.hitter, at: shots.length - 1, final: true });
-  if (shots.length >= 15) out.push({ key: 'marathon', side: W, player: null, at: shots.length - 1, final: true });
+  const faced = shots.filter((x) => x.side !== W && SMASHY.has(x.type) && !x.err).length;
+  const lastW = (shots.filter((x) => x.side === W).pop() || last).hitter;
+  if (faced >= 3) { if (roll('ironWall', team)) out.push({ key: 'ironWall', side: W, player: lastW, at: shots.length - 1, final: true }); } else if (faced >= 1 && r.reason === 'winner' && !SMASHY.has(last.type) && roll('counter', [last.hitter])) out.push({ key: 'counter', side: W, player: last.hitter, at: shots.length - 1, final: true });
+  if (shots.length >= 15 && roll('marathon', team)) out.push({ key: 'marathon', side: W, player: null, at: shots.length - 1, final: true });
+  // ── 실수 이름표 ──
+  const L = W === 'A' ? 'B' : 'A'; // 점수를 잃은 쪽
+  const blunder = (key, p) => { if (p && roll(key, [p])) { out.push({ key, side: L, player: p, at: shots.length - 1, final: true, blunder: true }); return true; } return false; };
+  if (r.reason === 'error') {
+    const p = last.hitter; const t = last.type;
+    const wide = last.y < 0 || last.y > 1 || (!doubles && (last.y < SINGLES_IN || last.y > 1 - SINGLES_IN));
+    if (t === 'serveShort' || t === 'serveLong' || t === 'flick') blunder('serveFault', p);
+    else if (r.pressure && blunder('choke', p)) { /* 막판 긴장 */ } else if (last.stroke === 'bh' && blunder('backhandMiss', p)) { /* 백핸드 */ } else if (last.err === 'net') blunder('intoNet', p);
+    else if (wide) blunder('sideOut', p);
+    else blunder('homeRun', p);
+  } else if (last.receiver) {
+    const rc = last.receiver;
+    const prev = shots[shots.length - 2];
+    if (last.type === 'smash' && prev && prev.side === L && UP.has(prev.type) && prev.q < 0.35) blunder('shortLift', prev.hitter);
+    else if (doubles && Math.abs(last.y - 0.5) < 0.07 && last.form && last.form[L] === 'ss') blunder('afterYou', rc);
+    else if (last.D < 1.0) blunder('airShot', rc);
+    else if (last.D > 2.8) blunder('lateFoot', rc);
+  }
   return out;
 }
