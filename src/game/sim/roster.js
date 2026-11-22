@@ -113,7 +113,7 @@ function lineupHtml(slot) {
   const L = getSimLineup(slot);
   const ev = document.getElementById('simEvent')?.value || 'team';
   const chip = (t) => `<span class="text-[10px] font-black px-1.5 rounded bg-black/40 text-amber-200 shrink-0">${t}</span>`;
-  const who = (p) => (p ? `<span class="text-white font-bold">${escapeHtml(p.name)}</span><span class="font-oswald text-fut-gold text-[11px] ml-1">${getOVR(p)}</span>` : '—');
+  const who = (p) => (p ? `<span class="text-white font-bold">${escapeHtml(p.name)}</span>${p.hand === 'L' ? '<span class="text-[10px] text-violet-300 ml-0.5" title="왼손잡이">왼손</span>' : ''}<span class="font-oswald text-fut-gold text-[11px] ml-1">${getOVR(p)}</span>` : '—');
   const pair = (d) => `${who(d[0])} <span class="text-[10px] text-slate-400">(후위)</span> · ${who(d[1])} <span class="text-[10px] text-slate-400">(전위)</span>`;
   const row = (label, html) => `<div class="flex items-center gap-2 text-[13px] min-h-[30px] min-w-0">${chip(label)}<span class="truncate min-w-0">${html}</span></div>`;
   let html = '';

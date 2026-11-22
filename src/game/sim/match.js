@@ -95,7 +95,7 @@ window.runSimMatch = async () => {
   /* ───── 기록 ───── */
   const stamina = {};
   const pstat = {}; // id -> { p, side, win, err, smash, kill, rallies }
-  const team = { A: { win: 0, err: 0, pts: 0, shots: {} }, B: { win: 0, err: 0, pts: 0, shots: {} } };
+  const team = { A: { win: 0, err: 0, pts: 0, shots: {}, bh: 0, bhErr: 0 }, B: { win: 0, err: 0, pts: 0, shots: {}, bh: 0, bhErr: 0 } };
   const notesSeen = new Map(); // key -> 횟수
   let longest = 0;
   const ps = (p, side) => { if (!pstat[p.id]) pstat[p.id] = { p, side, win: 0, err: 0, smash: 0, kill: 0, def: 0, bot: String(p.id).startsWith('__sim_bot') }; return pstat[p.id]; };
@@ -153,18 +153,19 @@ window.runSimMatch = async () => {
       const k = shot.winner ? 0.6 : 1;
       if (R) court.moveTo(shot.receiver.id, R.x + (lx - R.x) * k, R.y + (shot.y - R.y) * k);
     }
-    const caption = `${shot.hitter.name} ${S.name}${shot.err ? '' : shot.winner ? '!' : ''}`;
+    const sideWord = shot.type.startsWith('serve') || shot.type === 'flick' ? '' : shot.stroke === 'bh' ? '백핸드 ' : '포핸드 ';
+    const caption = `${shot.hitter.name} ${sideWord}${S.name}${shot.err ? '' : shot.winner ? '!' : ''}`;
     court.say(caption, S.name, shot.type === 'smash' || shot.type === 'kill' ? 'hot' : UP.has(shot.type) ? 'info' : 'good');
     shot.notes.forEach((k) => showNote(k));
     const fz = S.fz ?? (shot.type === 'lift' ? 0.7 : shot.type === 'clear' ? 2.6 : shot.type.startsWith('serve') || shot.type === 'flick' ? 1.0 : 1.5);
     let tz = S.tz ?? (UP.has(shot.type) ? 2.5 : 0.9);
     if (shot.winner || shot.err === 'out') tz = 0;
     if (shot.err === 'net') {
-      await court.fly({ fromId: H ? shot.hitter.id : null, x: 0.5 + (shot.side === 'A' ? -0.01 : 0.01), y: shot.y, z: 1.2, arc: 0.2, speed: S.speed * 0.8, fz, netFall: false });
+      await court.fly({ backhand: shot.stroke === 'bh', fromId: H ? shot.hitter.id : null, x: 0.5 + (shot.side === 'A' ? -0.01 : 0.01), y: shot.y, z: 1.2, arc: 0.2, speed: S.speed * 0.8, fz, netFall: false });
       await court.fly({ x: depthX(shot.side, 0.3), y: shot.y, z: 0, arc: 0, speed: 3, fz: 1.2 });
       court.mark(depthX(shot.side, 0.3), shot.y, 'out');
     } else {
-      await court.fly({ fromId: shot.hitter.id, x: shot.err === 'out' ? (opp === 'A' ? 0.5 - shot.d / 13.4 : 0.5 + shot.d / 13.4) : lx, y: shot.y, z: tz, arc: S.arc, speed: S.speed, decel: S.decel, fz });
+      await court.fly({ backhand: shot.stroke === 'bh', fromId: shot.hitter.id, x: shot.err === 'out' ? (opp === 'A' ? 0.5 - shot.d / 13.4 : 0.5 + shot.d / 13.4) : lx, y: shot.y, z: tz, arc: S.arc, speed: S.speed, decel: S.decel, fz });
       if (shot.err === 'out') court.mark(opp === 'A' ? 0.5 - shot.d / 13.4 : 0.5 + shot.d / 13.4, shot.y, 'out');
       else if (shot.winner) court.mark(lx, shot.y, 'win');
     }
@@ -225,6 +226,7 @@ window.runSimMatch = async () => {
             if (sh.type === 'smash') pp.smash++;
             if (sh.type === 'kill') pp.kill++;
             team[sh.side].shots[sh.type] = (team[sh.side].shots[sh.type] || 0) + 1;
+            if (sh.stroke === 'bh') { team[sh.side].bh++; if (sh.err) team[sh.side].bhErr++; }
             if (!sh.err && !sh.winner && sh.receiver && (sh.type === 'smash' || sh.type === 'kill')) ps(sh.receiver, sh.side === 'A' ? 'B' : 'A').def++;
             stamina[sh.hitter.id] = Math.max(35, (stamina[sh.hitter.id] ?? 100) - (0.5 + (99 - getStat(sh.hitter, 'phy')) / 160));
           }
@@ -236,7 +238,7 @@ window.runSimMatch = async () => {
           setBoard(st.score, games, gl);
           hud();
           // 중계 한 줄: 샷 흐름
-          const seq = r.shots.map((s) => `${escapeHtml(s.hitter.name)} ${SHOTS[s.type].name}`);
+          const seq = r.shots.map((s) => `${escapeHtml(s.hitter.name)} ${SHOTS[s.type].name}${s.stroke === 'bh' ? '<span class="text-violet-300 text-[10px]">(백핸드)</span>' : ''}`);
           const flow = seq.length > 6 ? [...seq.slice(0, 2), `… (${seq.length - 4}타) …`, ...seq.slice(-2)] : seq;
           const how = r.reason === 'winner' ? `<b class="text-emerald-300">위닝샷!</b>` : `<span class="text-amber-300">${last.err === 'net' ? '네트에 걸림' : '아웃'} (실수)</span>`;
           log(`<span class="sim-log-score">${st.score.A}-${st.score.B}</span> ${flow.join(' → ')} · ${how} <b class="${tcol(r.winner)}">${escapeHtml(tname(r.winner))} 득점</b>`);
@@ -309,6 +311,7 @@ ${motm ? `<p class="text-[11px] text-fut-gold mb-2">MVP <b>${escapeHtml(motm.p.n
 <div class="rounded-lg bg-black/40 py-1.5"><div class="text-slate-500">실수로 준 점수</div><div class="font-black text-amber-200">${team.A.err}-${team.B.err}</div></div>
 <div class="rounded-lg bg-black/40 py-1.5"><div class="text-slate-500">최장 랠리</div><div class="font-black text-cyan-200">${longest}타</div></div>
 </div>
+<p class="text-[11px] text-slate-400 mb-1">백핸드로 친 샷(실수): <span class="text-red-300">${tn('A')}</span> ${team.A.bh}(${team.A.bhErr}) · <span class="text-sky-300">${tn('B')}</span> ${team.B.bh}(${team.B.bhErr})</p>
 <p class="text-[11px] text-slate-400 mb-2"><span class="text-red-300">${tn('A')}</span> 많이 친 샷: ${top('A') || '—'}<br><span class="text-sky-300">${tn('B')}</span> 많이 친 샷: ${top('B') || '—'}</p>
 ${learned ? `<div class="mb-2 rounded-lg bg-sky-950/40 border border-sky-800/50 p-2"><div class="text-[11px] font-bold text-sky-300 mb-1">📘 오늘 경기에서 나온 전술</div><ul class="text-[11px] text-slate-200 space-y-1 list-none">${learned}</ul><p class="text-[10px] text-slate-500 mt-1">실수로 준 점수가 많은 팀은 '랠리형', 스매시를 많이 맞은 팀은 '로브를 맨 뒤까지'를 연습해 봐요.</p></div>` : ''}
 ${table}`;

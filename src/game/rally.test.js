@@ -56,3 +56,13 @@ test('능력치가 높은 팀이 대부분 이긴다', () => {
   }
   assert.ok(wins >= 34, `wins ${wins}`);
 });
+
+test('포핸드/백핸드: 오른손잡이 A팀은 y 큰 쪽(오른쪽)이 포핸드, 왼손잡이는 반대, B팀은 거울', async () => {
+  const { strokeSide } = await import('./sim/rally.js');
+  assert.equal(strokeSide('A', 'R', 0.5, 0.8), 'fh');
+  assert.equal(strokeSide('A', 'R', 0.5, 0.2), 'bh');
+  assert.equal(strokeSide('A', 'L', 0.5, 0.2), 'fh');
+  assert.equal(strokeSide('B', 'R', 0.5, 0.2), 'fh');
+  assert.equal(strokeSide('B', 'L', 0.5, 0.2), 'bh');
+  assert.equal(strokeSide('A', 'R', 0.5, 0.52), 'fh');
+});

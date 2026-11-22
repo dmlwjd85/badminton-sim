@@ -64,7 +64,7 @@ document.getElementById('detailAge') && (document.getElementById('detailAge').in
 document.getElementById('detailOvr') && (document.getElementById('detailOvr').innerText = ovr);
 document.getElementById('detailPos') && (document.getElementById('detailPos').innerText = ({ Single: '단식', All: '올라', Front: '전위', Rear: '후위' })[p.pos] || '미정');
 const posFull = document.getElementById('detailPosFull');
-if (posFull) posFull.textContent = POS_KR[p.pos] || '포지션 미정';
+if (posFull) posFull.textContent = `${POS_KR[p.pos] || '포지션 미정'} · ${p.hand === 'L' ? '왼손잡이' : '오른손잡이'}`;
 // 포지션별 OVR과 추천
 const recGrid = document.getElementById('posRecommendGrid');
 if (recGrid) {
@@ -239,6 +239,7 @@ document.getElementById('gmAgeManager')?.classList.remove('hidden');
 document.getElementById('gmStatHint')?.classList.remove('hidden');
 document.getElementById('gmInputAge') && (document.getElementById('gmInputAge').value = Number(p.age) || 13);
 document.getElementById('gmInputGender') && (document.getElementById('gmInputGender').value = (p.gender || GENDER_MAP[p.name]) === 'F' ? 'F' : 'M');
+document.getElementById('gmInputHand') && (document.getElementById('gmInputHand').value = p.hand === 'L' ? 'L' : 'R');
 const gmViewBong = document.getElementById('gmViewBong');
 if(gmViewBong) gmViewBong.innerHTML = `<input type="number" value="${Number(p.bong) || 0}" class="w-16 bg-transparent text-center border-b border-slate-600 focus:border-emerald-500 focus:outline-none transition-colors m-0 p-0 text-fut-gold font-display text-xl leading-none" onchange="window.setRecord('${p.id}', 'bong', this.value)">`;
 } else {
