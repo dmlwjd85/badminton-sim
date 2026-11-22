@@ -1,0 +1,32 @@
+{
+  "id": "/badminton-sim/",
+  "name": "삼봉 배드민턴",
+  "short_name": "삼봉 배드민턴",
+  "description": "삼봉초 배드민턴 커리어 모드 · 모의경기 전술 교보재",
+  "lang": "ko",
+  "start_url": "/badminton-sim/",
+  "scope": "/badminton-sim/",
+  "display": "standalone",
+  "background_color": "#0B1F14",
+  "theme_color": "#0B3B22",
+  "icons": [
+    {
+      "src": "pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
