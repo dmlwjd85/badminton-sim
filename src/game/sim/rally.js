@@ -50,6 +50,10 @@ export const NOTES = {
   smash_win: '높이 뜬 셔틀은 기회! 위에서 아래로 내리꽂는 스매시로 끝내요.',
   positioning: '위치 선정이 좋은 선수는 셔틀이 오기 전에 미리 가 있어요. 그래서 여유 있게 쳐요.',
   off_role: '자기 자리가 아니면 힘들어요. 전위 선수는 뒤에서, 후위 선수는 네트 앞에서 실수가 늘어요.',
+  backhand_rear: '뒤쪽 백핸드는 가장 치기 어려운 곳이에요. 셔틀을 멀리 못 보내고, 스매시도 힘들어요.',
+  backhand_target: '상대 백핸드 쪽을 노렸어요! 오른손잡이는 왼쪽 뒤, 왼손잡이는 오른쪽 뒤가 약해요.',
+  lefty: '왼손잡이는 포핸드·백핸드가 반대예요. 상대가 어느 손으로 치는지 먼저 봐요!',
+  forehand: '몸 쪽으로 돌아 들어가 포핸드로 치면 더 세고 정확해요. 빨리 움직이는 게 먼저!',
   mixed: '혼합복식은 보통 여자 선수가 앞(네트), 남자 선수가 뒤(스매시)를 맡아요. 서로 잘하는 자리!',
 };
 
@@ -62,6 +66,23 @@ function pickWeighted(entries, rng) {
   let r = rng() * sum;
   for (const [k, w] of list) { r -= w; if (r <= 0) return k; }
   return list[list.length - 1][0];
+}
+
+/**
+ * 포핸드/백핸드: 네트를 보고 섰을 때 라켓 쥔 손 쪽으로 오면 포핸드, 반대쪽이면 백핸드.
+ * A팀은 y가 큰 쪽이 오른쪽, B팀은 y가 작은 쪽이 오른쪽. 왼손잡이는 반대.
+ */
+export function strokeSide(side, hand, fromY, toY) {
+  const rightDir = side === 'A' ? 1 : -1;
+  const handDir = hand === 'L' ? -rightDir : rightDir;
+  const dy = toY - fromY;
+  if (Math.abs(dy) < 0.04) return 'fh';
+  return dy * handDir > 0 ? 'fh' : 'bh';
+}
+/** 그 선수의 백핸드 쪽 방향 (+1: y 큰 쪽) */
+export function backhandDir(side, hand) {
+  const rightDir = side === 'A' ? 1 : -1;
+  return hand === 'L' ? rightDir : -rightDir;
 }
 
 /** 서브 위치: 서브하는 쪽 점수가 짝수면 오른쪽, 홀수면 왼쪽 */
@@ -167,10 +188,13 @@ export function simulateRally(opts) {
       const offBack = doubles && myD > 4.2 && role === 'Front';
       const offFront = doubles && myD < 2.4 && role === 'Rear';
       if ((offBack || offFront) && rng() < 0.35) notes.push('off_role');
+      // 뒤쪽 백핸드: 스매시가 어렵고 안전하게 넘기기 바빠요
+      const bhRear = inc.bh && myD > 4.2;
+      if (bhRear && rng() < 0.45) notes.push('backhand_rear');
       if (UP.has(inc.type)) {
         // 높이 떠서 뒤로 온 셔틀: 공격 기회
         const late = inc.q; // 좋은 클리어일수록 스매시가 어려워요
-        w.push(['smash', 3 * s('sho') * atk * (1 - late * 0.55) * (doubles ? 1.35 : 0.85) * (offBack ? 0.65 : 1)]);
+        w.push(['smash', 3 * s('sho') * atk * (1 - late * 0.55) * (doubles ? 1.35 : 0.85) * (offBack ? 0.65 : 1) * (bhRear ? 0.35 : 1)]);
         w.push(['drop', 2 * s('dri') * (doubles ? 0.8 : 1.3)]);
         w.push(['clear', 1.5 * s('pas') * safe * (doubles ? 0.45 : 1.3) * (0.6 + late)]);
       } else if (FAST.has(inc.type)) {
@@ -203,6 +227,8 @@ export function simulateRally(opts) {
     if (sty === 'attack' && (type === 'smash' || type === 'kill' || type === 'drive')) errP *= 1.2;
     if (opts.pressure) errP *= 1 + opts.pressure * (1.2 - eff(hitter, 'cmp') / 100);
     if (doubles && ((myD > 4.2 && hitter.pos === 'Front') || (myD < 2.4 && hitter.pos === 'Rear'))) errP *= 1.25;
+    const stroke = inc ? (inc.bh ? 'bh' : 'fh') : 'fh';
+    if (inc && inc.bh) errP *= myD > 4.2 ? 1.35 : 1.1;
     // 3) 어디로?
     const target = tac.target || 'middle';
     const recvTeam = st.players[oppSide];
@@ -212,14 +238,21 @@ export function simulateRally(opts) {
     else if (!inc) ty = right ? (oppSide === 'A' ? rand(rng, 0.55, 0.85) : rand(rng, 0.15, 0.45)) : (oppSide === 'A' ? rand(rng, 0.15, 0.45) : rand(rng, 0.55, 0.85));
     else if (pick < 0.62 && target === 'middle') ty = doubles ? rand(rng, 0.44, 0.56) : rand(rng, 0.4, 0.6);
     else if (pick < 0.62 && target === 'corners') ty = rng() < 0.5 ? rand(rng, 0.1, 0.2) : rand(rng, 0.8, 0.9);
-    else if (pick < 0.62 && target === 'body') { const rp = recvTeam[Math.floor(rng() * recvTeam.length)]; ty = pos[rp.id].y + rand(rng, -0.05, 0.05); }
+    else if (pick < 0.62 && target === 'backhand') {
+      // 받을 사람의 백핸드 쪽: 긴 샷이면 뒤에 있는 사람, 짧은 샷이면 앞사람
+      const deepShot = S0.depth[0] > 4;
+      const rp = recvTeam.length > 1 ? recvTeam.reduce((b, p) => ((deepShot ? pos[p.id].d > pos[b.id].d : pos[p.id].d < pos[b.id].d) ? p : b), recvTeam[0]) : recvTeam[0];
+      ty = pos[rp.id].y + backhandDir(oppSide, rp.hand) * rand(rng, 0.2, 0.33);
+      if (rp.hand === 'L' && rng() < 0.35) notes.push('lefty');
+    } else if (pick < 0.62 && target === 'body') { const rp = recvTeam[Math.floor(rng() * recvTeam.length)]; ty = pos[rp.id].y + rand(rng, -0.05, 0.05); }
     else ty = rand(rng, 0.12, 0.88);
     if (!doubles) ty = clamp(ty, SINGLES_IN + 0.04, 1 - SINGLES_IN - 0.04);
     let td = rand(rng, S0.depth[0], S0.depth[1]);
     // 서브: 서비스 코트 안 (단식은 끝선, 복식은 긴 서비스 라인)
     if (type === 'serveShort') ty = clamp(ty, 0.08, 0.92);
 
-    const q = clamp(0.3 + (skill - 60) / 100 + rng() * 0.35 - (inc ? inc.q : 0) * 0.2, 0.02, 1);
+    let q = clamp(0.3 + (skill - 60) / 100 + rng() * 0.35 - (inc ? inc.q : 0) * 0.2, 0.02, 1);
+    if (inc && inc.bh && myD > 4.2) q = Math.max(0.02, q - 0.15); // 뒤쪽 백핸드는 짧게 날아가요
     // 짧게 올린 로브는 상대가 스매시하기 좋아요
     if ((type === 'lift' || type === 'clear') && q < 0.3) td = Math.min(td, 4.6 + q * 3);
 
@@ -233,7 +266,7 @@ export function simulateRally(opts) {
         else ly = ty < 0.5 ? rand(rng, -0.08, doubles ? -0.02 : SINGLES_IN - 0.03) : rand(rng, doubles ? 1.02 : 1 - SINGLES_IN + 0.03, 1.08);
       }
       if (sty === 'attack' && !usedNotes.has('patience') && (type === 'smash' || type === 'kill')) notes.push('patience');
-      shots.push({ hitter, side, type, d: kind === 'net' ? 0.15 : ld, y: ly, q, err: kind, winner: false, notes, pos: snap(), form: { ...form } });
+      shots.push({ hitter, side, type, stroke, d: kind === 'net' ? 0.15 : ld, y: ly, q, err: kind, winner: false, notes, pos: snap(), form: { ...form } });
       return { shots, winner: oppSide, reason: 'error', last: hitter };
     }
 
@@ -276,6 +309,7 @@ export function simulateRally(opts) {
       recv = recvTeam.reduce((b, p) => (dist(p) < dist(b) ? p : b), recvTeam[0]);
     }
     const D = dist(recv);
+    const recvStroke = strokeSide(oppSide, recv.hand, pos[recv.id].y, ty);
     // 6) 받을 수 있나?
     const base = { smash: 0.8, kill: 0.56, drop: 0.92, net: 0.92, clear: 0.99, lift: 0.99, drive: 0.92, push: 0.93, block: 0.95, serveShort: 0.98, serveLong: 0.995, flick: 0.92 }[type];
     const rs = FAST.has(type) ? (eff(recv, 'def') + eff(recv, 'ref')) / 2
@@ -283,6 +317,7 @@ export function simulateRally(opts) {
         : type === 'drive' ? (eff(recv, 'ref') + eff(recv, 'wrk')) / 2 : eff(recv, 'pac');
     let reach = base - q * 0.15 - Math.max(0, D - 1.6) * 0.035 * (1.25 - eff(recv, 'pac') / 99) + (rs - 60) / 240 + (eff(recv, 'pst') - 60) / 600;
     if (D < 1.1 && eff(recv, 'pst') >= 70 && rng() < 0.2) notes.push('positioning');
+    if (recvStroke === 'bh' && td > 4.2) reach -= 0.03;
     // 나란히 선 두 사람 가운데: 서로 미루다 놓침
     if (doubles && form[oppSide] === 'ss' && Math.abs(ty - 0.5) < 0.07 && inc) {
       reach -= 0.07;
@@ -299,10 +334,11 @@ export function simulateRally(opts) {
     const won = rng() > reach;
     if (won) {
       if (type === 'smash') notes.push('smash_win');
+      if (recvStroke === 'bh' && target === 'backhand') notes.push('backhand_target');
       if (!doubles && (ty < 0.22 || ty > 0.78)) notes.push('corners');
     }
     notes.forEach((k) => usedNotes.add(k));
-    shots.push({ hitter, side, type, d: td, y: ty, q, err: null, winner: won, receiver: recv, notes, pos: snap(), form: { ...form } });
+    shots.push({ hitter, side, type, stroke, d: td, y: ty, q, err: null, winner: won, receiver: recv, notes, pos: snap(), form: { ...form } });
     prevByHitter[hitter.id] = type;
     if (won) return { shots, winner: side, reason: 'winner', last: hitter };
     // 7) 받는 사람이 셔틀 쪽으로
@@ -313,7 +349,7 @@ export function simulateRally(opts) {
         if (S0.dir === 'up') { place(partner, 1.9, 0.5); form[oppSide] = 'fb'; } else if (form[oppSide] !== 'fb') { place(partner, 3.8, ty < 0.5 ? 0.73 : 0.27); }
       }
     }
-    inc = { type, q, d: td, y: ty };
+    inc = { type, q, d: td, y: ty, bh: recvStroke === 'bh' };
     hitter = recv; side = oppSide;
   }
   // 아주 긴 랠리: 마지막 친 쪽 득점으로 정리

@@ -12,7 +12,7 @@ export function seed() {
   NAMES.forEach((name, i) => {
     const pos = POS[i % POS.length];
     const lv = 1 + Math.floor(rnd() * 8);
-    const p = { name, pos, level: lv, exp: 0, age: 13, season: 2, pin: '1111', gender: i % 2 ? 'F' : 'M' };
+    const p = { name, pos, level: lv, exp: 0, age: 13, season: 2, pin: '1111', gender: i % 2 ? 'F' : 'M', hand: i % 4 === 3 ? 'L' : 'R' };
     KEYS.forEach((k) => { p[k] = 52 + Math.floor(rnd() * 22) + (pos === 'Rear' && (k === 'sho' || k === 'pas') ? 10 : 0); });
     out[`${base}/players/player_${name}`] = p;
   });

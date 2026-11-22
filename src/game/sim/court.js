@@ -259,7 +259,7 @@ export class LiveCourt {
    */
   fly(opts) {
     const A = opts.fromId ? this.players.get(opts.fromId) : null;
-    if (A) { A.swing = 1; this.ball.x = A.x; this.ball.y = A.y; }
+    if (A) { A.swing = 1; A.bh = !!opts.backhand; this.ball.x = A.x; this.ball.y = A.y; }
     const b = this.ball;
     const fz = opts.fz ?? (A ? 2.2 : b.z);
     const dist = meters(b.x, b.y, opts.x, opts.y);
@@ -384,7 +384,10 @@ export class LiveCourt {
     // 라켓 (치는 순간 휘둘러요)
     const [nx, ny] = this.toScreen(0.5, pl.y);
     const toward = Math.atan2(ny - sy, nx - sx);
-    const ang = toward + 0.9 - pl.swing * 1.8;
+    // 라켓은 잘 쓰는 손 쪽 (오른손: 네트를 볼 때 오른쪽). 백핸드면 몸 반대쪽으로 넘어와요
+    const hs = pl.p.hand === 'L' ? -1 : 1;
+    const base = pl.bh && pl.swing > 0 ? -hs * 1.0 : hs * 0.95;
+    const ang = toward + base - hs * pl.swing * 1.6 * (pl.bh ? -1 : 1);
     const rx = sx + Math.cos(ang) * r * 1.55; const ry = sy + Math.sin(ang) * r * 1.55;
     ctx.save();
     ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;

@@ -52,6 +52,17 @@ if (p && p.name) GENDER_MAP[p.name] = g;
 } catch (e) { console.error('setPlayerGender Error:', e); window.customAlert(`성별 저장 에러:\n${e.message}`); }
 };
 
+/** 잘 쓰는 손 (포핸드·백핸드 방향이 바뀌어요) */
+window.setPlayerHand = async (pId, h) => {
+try {
+checkAuthReady();
+if (!window.playerState.isGM || (h !== 'L' && h !== 'R')) return;
+const p = (window.allPlayersData || []).find((x) => x.id === pId);
+const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', 'player_' + getSafeDocId(pId));
+await setDoc(docRef, { hand: h, ...(p && p.name ? { name: p.name } : {}) }, { merge: true });
+} catch (e) { console.error('setPlayerHand Error:', e); window.customAlert(`손 저장 에러:\n${e.message}`); }
+};
+
 window.claimWage = async () => {
 try {
 checkAuthReady();

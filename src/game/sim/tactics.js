@@ -1,7 +1,7 @@
 /** 팀 전술 (전술판에서 고름, 기기에 저장). 팀 키('A'~'F')별로 따로 */
 export const TACTIC_OPTIONS = {
   style: { label: '경기 스타일', opts: { attack: '공격형 (스매시)', balanced: '균형', rally: '랠리형 (실수 줄이기)' } },
-  target: { label: '노리는 곳', opts: { middle: '두 사람 사이 가운데', corners: '네 구석', body: '몸 쪽' } },
+  target: { label: '노리는 곳', opts: { middle: '두 사람 사이 가운데', corners: '네 구석', backhand: '상대 백핸드 쪽', body: '몸 쪽' } },
   serve: { label: '서브', opts: { short: '짧고 낮게', mix: '섞어서', long: '높고 길게' } },
 };
 export const DEFAULT_TACTIC = { style: 'balanced', target: 'middle', serve: 'mix' };
