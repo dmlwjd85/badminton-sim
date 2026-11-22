@@ -133,3 +133,11 @@ test('고정 인원이 한쪽에 몰려 있어도 나머지를 적은 팀에 먼
   const { teams } = buildTeams(players, 2, 'ability', { ovrOf, rng: seeded(3), fixed });
   assert.deepEqual(teams.map((t) => t.length), [5, 5]);
 });
+
+test('혼합복식 짝: 남자 후위 + 여자 전위, 한쪽 성별이 없으면 null', async () => {
+  const { bestMixedPair } = await import('./teamBuilder.js');
+  const g = (p) => p.g;
+  const squad = [{ id: 'm1', g: 'M', ovr: 80 }, { id: 'm2', g: 'M', ovr: 60 }, { id: 'f1', g: 'F', ovr: 70 }, { id: 'f2', g: 'F', ovr: 65 }];
+  assert.deepEqual(bestMixedPair(squad, (p) => p.ovr, g).map((p) => p.id), ['m1', 'f1']);
+  assert.equal(bestMixedPair(squad.filter((p) => p.g === 'M'), (p) => p.ovr, g), null);
+});

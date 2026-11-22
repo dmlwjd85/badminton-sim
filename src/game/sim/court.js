@@ -431,14 +431,23 @@ export class LiveCourt {
         const al = 1 - (now - c.t) / 520;
         const [ax, ay] = this.toScreen(a.x, a.y); const [cx, cy] = this.toScreen(c.x, c.y);
         ctx.strokeStyle = `rgba(253,224,71,${0.6 * al})`;
-        ctx.lineWidth = 2.5 * al + 0.5;
+        ctx.lineWidth = (2.5 * al + 0.5) * (1 + Math.min(7, Math.max(0, c.z)) * 0.12);
         ctx.beginPath(); ctx.moveTo(ax, ay - a.z * lift); ctx.lineTo(cx, cy - c.z * lift); ctx.stroke();
       }
       ctx.restore();
     }
     const [sx, sy] = this.toScreen(b.x, b.y);
     // 그림자 (바닥)
-    ctx.beginPath(); ctx.ellipse(sx, sy, 4, 2, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill();
+    // 높이 뜰수록: 셔틀은 크게(눈앞으로 다가오는 느낌), 바닥 그림자는 작고 흐리게
+    const zc = clamp(b.z, 0, 8);
+    const grow = 1 + zc * 0.17; // 7m 높이에서 약 2.2배
+    const sh = Math.max(0.35, 1 - zc / 11);
+    ctx.beginPath(); ctx.ellipse(sx, sy, 4.5 * sh, 2.2 * sh, 0, 0, Math.PI * 2); ctx.fillStyle = `rgba(0,0,0,${(0.5 * sh).toFixed(2)})`; ctx.fill();
+    if (zc > 2.5) {
+      // 높이 안내선: 그림자에서 셔틀까지 점선
+      ctx.save(); ctx.setLineDash([2, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy - b.z * lift); ctx.stroke(); ctx.restore();
+    }
     const y = sy - b.z * lift;
     // 셔틀: 코르크(둥근 머리) + 깃털(원뿔) — 날아가는 반대 방향으로 깃털
     let ang = -Math.PI / 2;
@@ -449,7 +458,7 @@ export class LiveCourt {
       const dx = qx - px; const dy = (qy - q.z * lift) - (py - p.z * lift);
       if (Math.hypot(dx, dy) > 0.3) ang = Math.atan2(dy, dx);
     }
-    const s = clamp(this.pxPerM * 0.16, 4, 7);
+    const s = clamp(this.pxPerM * 0.16, 4, 7) * grow;
     ctx.save();
     ctx.translate(sx, y); ctx.rotate(ang);
     ctx.beginPath(); ctx.moveTo(-s * 0.2, -s * 0.55); ctx.lineTo(-s * 2.2, -s * 1.15); ctx.lineTo(-s * 2.2, s * 1.15); ctx.lineTo(-s * 0.2, s * 0.55); ctx.closePath();
@@ -472,6 +481,7 @@ export class LiveCourt {
 }
 
 export const liveCourt = new LiveCourt();
+if (typeof window !== 'undefined' && import.meta.env && import.meta.env.DEV) window.__courtZ = () => liveCourt.ball.z;
 
 if (typeof window !== 'undefined') {
   window.addEventListener('resize', () => { if (liveCourt.running) liveCourt.resize(); });

@@ -1,6 +1,9 @@
 /** 모의경기 명단과 팀 자동 편성 */
-import { SIM_TEAM_KEYS, isSimTeamKey, simTeamInfo } from '../constants.js';
-import { buildTeams, pickLineup, TEAM_MODES } from '../teamBuilder.js';
+import { SIM_TEAM_KEYS, isSimTeamKey, simTeamInfo, GENDER_MAP } from '../constants.js';
+
+/** 성별: 저장된 값 → 명단 기본값 → 모르면 남 */
+export const genderOf = (p) => ((p && (p.gender || GENDER_MAP[p.name])) === 'F' ? 'F' : 'M');
+import { buildTeams, pickLineup, bestMixedPair, TEAM_MODES } from '../teamBuilder.js';
 import { paintSimOrientButton } from './court.js';
 import { getOVRForPos, getBonusStats, getStat } from '../stats.js';
 import { getOVR, getPosColor } from '../stats.js';
@@ -58,7 +61,9 @@ export function getSimLineup(slot) {
   if (squad.length < 2) squad = padSimRosterWithBots(squad, slot, 2).roster;
   const L = pickLineup(squad, fitOVR);
   const role = (p, r) => (p ? asRole(p, r) : p);
+  const mx = bestMixedPair(squad, fitOVR, genderOf);
   return {
+    mixed: mx ? [role(mx[0], 'Rear'), role(mx[1], 'Front')] : null,
     doubles1: [role(L.doubles1[0], 'Rear'), role(L.doubles1[1], 'Front')],
     single: role(L.single, 'Single'),
     doubles2: [role(L.doubles2[0], 'Rear'), role(L.doubles2[1], 'Front')],
@@ -113,6 +118,7 @@ function lineupHtml(slot) {
   const row = (label, html) => `<div class="flex items-center gap-2 text-[13px] min-h-[30px] min-w-0">${chip(label)}<span class="truncate min-w-0">${html}</span></div>`;
   let html = '';
   if (ev === 'singles') html = row('단식', who(L.single));
+  else if (ev === 'mixed') html = L.mixed ? row('혼복', `${who(L.mixed[0])} <span class="text-[10px] text-sky-300">(남·후위)</span> · ${who(L.mixed[1])} <span class="text-[10px] text-pink-300">(여·전위)</span>`) : `${row('복식', pair(L.doubles1))}<p class="text-[11px] text-amber-300">남녀가 모두 있어야 혼합복식이에요. 지금은 일반 복식으로 뛰어요. (선수 카드에서 성별을 정해 주세요)</p>`;
   else if (ev === 'doubles') html = row('복식', pair(L.doubles1));
   else html = row('복식1', pair(L.doubles1)) + row('단식', who(L.single)) + row('복식2', pair(L.doubles2));
   if (L.bench.length) html += `<p class="text-[11px] text-slate-400 mt-1">응원: ${L.bench.map((p) => escapeHtml(p.name)).join(', ')}</p>`;

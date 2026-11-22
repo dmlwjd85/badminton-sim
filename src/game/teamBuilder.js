@@ -177,6 +177,19 @@ export function bestPair(pool, fitOf) {
   return best; // [후위, 전위]
 }
 
+/** 혼합복식 짝: 남자 후위 + 여자 전위. 한쪽 성별이 없으면 null */
+export function bestMixedPair(pool, fitOf, genderOf) {
+  const men = pool.filter((p) => genderOf(p) !== 'F');
+  const women = pool.filter((p) => genderOf(p) === 'F');
+  if (!men.length || !women.length) return null;
+  let best = null; let bs = -Infinity;
+  men.forEach((m) => women.forEach((w) => {
+    const s = fitOf(m, 'Rear') + fitOf(w, 'Front');
+    if (s > bs) { bs = s; best = [m, w]; }
+  }));
+  return best; // [남자 후위, 여자 전위]
+}
+
 export function bestSingle(pool, fitOf) {
   let best = null; let bs = -Infinity;
   pool.forEach((p) => { const s = fitOf(p, 'Single') + (normPos(p) === 'Single' ? 3 : 0); if (s > bs) { bs = s; best = p; } });

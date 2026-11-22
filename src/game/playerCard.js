@@ -3,7 +3,7 @@ import { setDoc } from 'firebase/firestore';
 import { resolveFaceSrc } from './mangaFace.js';
 import { featureOn } from '../config/features.js';
 import { diffStatChanges, pushUndo } from './activityUndo.js';
-import { POS_KR, STAT_NAMES, POS_WEIGHTS, STAT_KEYS, ACTIVITY_DAILY_CAP, STAT_DESC, ENHANCE_LEVELS, SHOP_ITEMS, isSimTeamKey, simTeamInfo } from './constants.js';
+import { POS_KR, STAT_NAMES, POS_WEIGHTS, STAT_KEYS, ACTIVITY_DAILY_CAP, STAT_DESC, ENHANCE_LEVELS, SHOP_ITEMS, isSimTeamKey, simTeamInfo, GENDER_MAP } from './constants.js';
 import { getStat, getBonusStats, statGrowthChancePct, applyLevelStatGrowth, getOVR, getTierInfo, getWeeklyWage, getExpNeeded, positionOVRs, recommendedPosition } from './stats.js';
 import { getAvatarHtml, triggerConfetti } from './ui.js';
 import { playerDisplayName, canEditThisPlayer, getTodayActivityCounts, escapeAttr, fontStack } from './utils.js';
@@ -238,6 +238,7 @@ document.getElementById('gmWalletManager')?.classList.remove('hidden');
 document.getElementById('gmAgeManager')?.classList.remove('hidden');
 document.getElementById('gmStatHint')?.classList.remove('hidden');
 document.getElementById('gmInputAge') && (document.getElementById('gmInputAge').value = Number(p.age) || 13);
+document.getElementById('gmInputGender') && (document.getElementById('gmInputGender').value = (p.gender || GENDER_MAP[p.name]) === 'F' ? 'F' : 'M');
 const gmViewBong = document.getElementById('gmViewBong');
 if(gmViewBong) gmViewBong.innerHTML = `<input type="number" value="${Number(p.bong) || 0}" class="w-16 bg-transparent text-center border-b border-slate-600 focus:border-emerald-500 focus:outline-none transition-colors m-0 p-0 text-fut-gold font-display text-xl leading-none" onchange="window.setRecord('${p.id}', 'bong', this.value)">`;
 } else {
