@@ -66,3 +66,14 @@ test('포핸드/백핸드: 오른손잡이 A팀은 y 큰 쪽(오른쪽)이 포�
   assert.equal(strokeSide('B', 'L', 0.5, 0.2), 'bh');
   assert.equal(strokeSide('A', 'R', 0.5, 0.52), 'fh');
 });
+
+test('결정적 순간: 스매시 위닝은 스매시 폭격, 긴 랠리는 마라톤', async () => {
+  const { rallyHighlights } = await import('./sim/rally.js');
+  const a = mk('a1'); const b = mk('b1');
+  const sh = (side, type, extra = {}) => ({ hitter: side === 'A' ? a : b, side, type, q: 0.6, d: 3.5, y: 0.5, err: null, winner: false, receiver: side === 'A' ? b : a, D: 1, notes: [], ...extra });
+  const r1 = { shots: [sh('A', 'serveShort'), sh('B', 'lift'), sh('A', 'smash', { winner: true })], winner: 'A', reason: 'winner' };
+  assert.ok(rallyHighlights(r1, false).some((h) => h.key === 'smashBomb'));
+  const long = Array.from({ length: 16 }, (_, i) => sh(i % 2 ? 'B' : 'A', 'clear'));
+  long[15] = sh('B', 'drop', { winner: true, q: 0.2 });
+  assert.ok(rallyHighlights({ shots: long, winner: 'B', reason: 'winner' }, false).some((h) => h.key === 'marathon'));
+});

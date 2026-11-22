@@ -338,7 +338,7 @@ export function simulateRally(opts) {
       if (!doubles && (ty < 0.22 || ty > 0.78)) notes.push('corners');
     }
     notes.forEach((k) => usedNotes.add(k));
-    shots.push({ hitter, side, type, stroke, d: td, y: ty, q, err: null, winner: won, receiver: recv, notes, pos: snap(), form: { ...form } });
+    shots.push({ hitter, side, type, stroke, d: td, y: ty, q, err: null, winner: won, receiver: recv, D, recvStroke, notes, pos: snap(), form: { ...form } });
     prevByHitter[hitter.id] = type;
     if (won) return { shots, winner: side, reason: 'winner', last: hitter };
     // 7) 받는 사람이 셔틀 쪽으로
@@ -354,4 +354,76 @@ export function simulateRally(opts) {
   }
   // 아주 긴 랠리: 마지막 친 쪽 득점으로 정리
   return { shots, winner: side === 'A' ? 'B' : 'A', reason: 'error', last: hitter };
+}
+
+/**
+ * 결정적 순간 이름표 (풋살의 '킬패스', '슈퍼세이브' 같은 것)
+ * kind: attack(공격) / defense(수비) / rally(랠리)
+ */
+export const HIGHLIGHTS = {
+  smashBomb: { name: '스매시 폭격', en: 'SMASH BOMB', icon: '🔥', kind: 'attack', color: '#fb923c', desc: '스매시로 바로 끝낸 점수' },
+  netKill: { name: '네트 킬', en: 'NET KILL', icon: '⚡', kind: 'attack', color: '#facc15', desc: '네트 앞에서 떠오른 셔틀을 내리꽂은 점수' },
+  combo: { name: '찰떡 콤보', en: 'COMBO!', icon: '🤝', kind: 'attack', color: '#f472b6', desc: '뒷사람 스매시 → 앞사람 네트 킬로 끝낸 복식 공식' },
+  barrage: { name: '연속 폭격', en: 'BARRAGE', icon: '💣', kind: 'attack', color: '#f97316', desc: '한 랠리에 스매시 3번 이상 몰아쳐서 이긴 점수' },
+  trickDrop: { name: '속임수 드롭', en: 'TRICK DROP', icon: '🎭', kind: 'attack', color: '#a78bfa', desc: '세게 칠 것처럼 하다 살짝 떨어뜨려 상대를 속인 점수' },
+  magicNet: { name: '마법 헤어핀', en: 'MAGIC NET', icon: '🪶', kind: 'attack', color: '#5eead4', desc: '네트에 딱 붙인 헤어핀으로 끝낸 점수' },
+  laser: { name: '레이저 드라이브', en: 'LASER', icon: '🚀', kind: 'attack', color: '#38bdf8', desc: '낮고 빠른 드라이브·푸시로 끝낸 점수' },
+  lineSnipe: { name: '라인 저격', en: 'ON THE LINE', icon: '🎯', kind: 'attack', color: '#4ade80', desc: '선에 아슬아슬하게 떨어진 점수' },
+  ace: { name: '서브 에이스', en: 'SERVICE ACE', icon: '🎾', kind: 'attack', color: '#fde047', desc: '서브 한 번에 끝낸 점수' },
+  flickAmbush: { name: '플릭 기습', en: 'FLICK!', icon: '✈️', kind: 'attack', color: '#93c5fd', desc: '짧은 서브인 척 머리 위로 넘겨 끝낸 점수' },
+  backhandHunt: { name: '백핸드 사냥', en: 'BACKHAND HUNT', icon: '🏹', kind: 'attack', color: '#c084fc', desc: '상대 뒤쪽 백핸드를 노려 끝낸 점수' },
+  superReceive: { name: '슈퍼 리시브', en: 'SUPER DEFENSE', icon: '🛡️', kind: 'defense', color: '#22d3ee', desc: '아주 강한 스매시·킬을 받아 낸 순간' },
+  diveSave: { name: '몸을 날린 수비', en: 'DIVE SAVE', icon: '🦸', kind: 'defense', color: '#67e8f9', desc: '멀리 떨어진 셔틀까지 몸을 날려 받아 낸 순간' },
+  ironWall: { name: '철벽 수비', en: 'IRON WALL', icon: '🧱', kind: 'defense', color: '#94a3b8', desc: '스매시를 3번 이상 버티고 끝내 점수를 낸 랠리' },
+  counter: { name: '역습 성공', en: 'COUNTER!', icon: '🔄', kind: 'defense', color: '#34d399', desc: '스매시를 받아 내고 거꾸로 점수를 낸 랠리' },
+  marathon: { name: '마라톤 랠리', en: 'MARATHON', icon: '🔁', kind: 'rally', color: '#fbbf24', desc: '15번 넘게 주고받은 긴 랠리' },
+};
+
+const SMASHY = new Set(['smash', 'kill']);
+
+/** 랠리 하나에서 나온 결정적 순간들. at: 몇 번째 샷에서 나왔는지 (수비 장면은 랠리 중간에 보여 줘요) */
+export function rallyHighlights(r, doubles) {
+  const out = [];
+  const shots = r.shots;
+  const last = shots[shots.length - 1];
+  const W = r.winner;
+  // 랠리 중간: 수비 장면
+  shots.forEach((sh, i) => {
+    if (sh.err || sh.winner || !sh.receiver) return;
+    const def = sh.side === 'A' ? 'B' : 'A';
+    const next = shots[i + 1];
+    const returned = next && !next.err;
+    if (!returned) return;
+    if (SMASHY.has(sh.type) && sh.q >= 0.6) out.push({ key: 'superReceive', side: def, player: sh.receiver, at: i });
+    else if (sh.D >= (doubles ? 2.5 : 3.1) && sh.q >= 0.5 && !UP.has(sh.type)) out.push({ key: 'diveSave', side: def, player: sh.receiver, at: i });
+  });
+  if (r.reason === 'winner') {
+    const t = last.type;
+    const p = last.hitter;
+    const prev = shots[shots.length - 2];
+    const prev2 = shots[shots.length - 3];
+    let key = null;
+    if (t === 'serveShort' || (t === 'serveLong' && last.q >= 0.6)) key = 'ace';
+    else if (t === 'flick') key = 'flickAmbush';
+    else if (t === 'kill' && doubles && prev2 && prev2.side === W && prev2.type === 'smash' && prev2.hitter.id !== p.id) key = 'combo';
+    else if (t === 'kill') key = 'netKill';
+    else if (t === 'smash' && last.q >= 0.4) key = 'smashBomb';
+    else if (t === 'drop' && last.q >= 0.45) key = 'trickDrop';
+    else if ((t === 'net' || t === 'block') && last.q >= 0.55) key = 'magicNet';
+    else if ((t === 'drive' || t === 'push') && last.q >= 0.5) key = 'laser';
+    const sideLine = doubles ? Math.min(last.y, 1 - last.y) * COURT_W : Math.min(Math.abs(last.y - SINGLES_IN), Math.abs(1 - SINGLES_IN - last.y)) * COURT_W;
+    const backLine = Math.abs(6.7 - last.d);
+    if ((sideLine < 0.18 || backLine < 0.2) && (!key || key === 'laser' || key === 'trickDrop' || t === 'clear' || t === 'lift')) key = 'lineSnipe';
+    if (last.recvStroke === 'bh' && last.d > 4.2 && (!key || key === 'lineSnipe')) key = 'backhandHunt';
+    if (key) out.push({ key, side: W, player: p, at: shots.length - 1, final: true });
+    const smashes = shots.filter((s) => s.side === W && SMASHY.has(s.type)).length;
+    if (smashes >= 3 && key !== 'combo') out.push({ key: 'barrage', side: W, player: p, at: shots.length - 1, final: true });
+    void prev;
+  }
+  // 수비하던 쪽이 이김
+  const faced = shots.filter((s) => s.side !== W && SMASHY.has(s.type) && !s.err).length;
+  if (faced >= 3) out.push({ key: 'ironWall', side: W, player: last.side === W ? last.hitter : (shots.filter((s) => s.side === W).pop() || last).hitter, at: shots.length - 1, final: true });
+  else if (faced >= 1 && r.reason === 'winner' && !SMASHY.has(last.type) && shots.some((s, i) => s.side !== W && SMASHY.has(s.type) && i < shots.length - 1)) out.push({ key: 'counter', side: W, player: last.hitter, at: shots.length - 1, final: true });
+  if (shots.length >= 15) out.push({ key: 'marathon', side: W, player: null, at: shots.length - 1, final: true });
+  return out;
 }

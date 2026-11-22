@@ -7,7 +7,7 @@
  */
 import confetti from 'canvas-confetti';
 import { liveCourt, depthX } from './court.js';
-import { simulateRally, applyPoint, gameWinner, serveInfo, SHOTS, NOTES } from './rally.js';
+import { simulateRally, applyPoint, gameWinner, serveInfo, SHOTS, NOTES, HIGHLIGHTS, rallyHighlights } from './rally.js';
 import { getTactic, TACTIC_OPTIONS } from './tactics.js';
 import { simSlotTeam, simSlotName, countSimTeam, getSimLineup, genderOf } from './roster.js';
 import { getStat } from '../stats.js';
@@ -30,6 +30,16 @@ export function resetSimPitchCanvas() {
   if (n) n.textContent = '셔틀이 올라가면 나란히, 내려가면 앞뒤로!';
 }
 window.resetSimPitchCanvas = resetSimPitchCanvas;
+
+/** 매치 센터의 '결정적 순간 이름표' */
+export function paintHighlightGuide() {
+  const box = document.getElementById('simHlGuide');
+  if (!box || box.dataset.done) return;
+  box.dataset.done = '1';
+  const group = (kind, title) => `<p class="text-[11px] font-bold text-amber-200 mt-2 mb-1">${title}</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-1">${Object.values(HIGHLIGHTS).filter((h) => h.kind === kind).map((h) => `<div class="flex items-start gap-2 text-[12px] rounded-lg bg-black/30 px-2 py-1.5"><span class="text-base leading-none">${h.icon}</span><span><b style="color:${h.color}">${h.name}</b> <span class="text-[10px] text-slate-500 font-bold">${h.en}</span><br><span class="text-slate-300">${h.desc}</span></span></div>`).join('')}</div>`;
+  box.innerHTML = group('attack', '공격') + group('defense', '수비') + group('rally', '랠리');
+}
+window.paintHighlightGuide = paintHighlightGuide;
 
 window.simClearLog = () => {
   const log = document.getElementById('simMatchLog');
@@ -98,7 +108,18 @@ window.runSimMatch = async () => {
   const team = { A: { win: 0, err: 0, pts: 0, shots: {}, bh: 0, bhErr: 0 }, B: { win: 0, err: 0, pts: 0, shots: {}, bh: 0, bhErr: 0 } };
   const notesSeen = new Map(); // key -> 횟수
   let longest = 0;
-  const ps = (p, side) => { if (!pstat[p.id]) pstat[p.id] = { p, side, win: 0, err: 0, smash: 0, kill: 0, def: 0, bot: String(p.id).startsWith('__sim_bot') }; return pstat[p.id]; };
+  const ps = (p, side) => { if (!pstat[p.id]) pstat[p.id] = { p, side, win: 0, err: 0, smash: 0, kill: 0, def: 0, hl: 0, bot: String(p.id).startsWith('__sim_bot') }; return pstat[p.id]; };
+  const hlLog = []; // { key, side, name }
+  const BIG = new Set(['combo', 'barrage', 'ironWall', 'marathon', 'counter', 'lineSnipe']);
+  const showHl = async (h, final) => {
+    const H = HIGHLIGHTS[h.key];
+    court.showFx(H.en, H.color, `${H.icon} ${H.name}${h.player ? ` · ${h.player.name}` : ''}`, true);
+    court.say(`${H.icon} ${H.name}!${h.player ? ` ${h.player.name}` : ''}`, H.name, h.side === 'A' ? 'hot' : 'good');
+    if (h.player) ps(h.player, h.side).hl++;
+    hlLog.push({ key: h.key, side: h.side, name: h.player ? h.player.name : '' });
+    if (final && BIG.has(h.key) && ts > 0) { try { confetti({ particleCount: 70, spread: 70, origin: { y: 0.45 }, zIndex: 9999, disableForReducedMotion: true, colors: [H.color, '#ffffff', '#fde047'] }); } catch (e) { /* 무시 */ } }
+    await court.wait(final ? 1100 : 650);
+  };
   const eff = (p, k) => getStat(p, k) * (0.86 + 0.14 * ((stamina[p.id] ?? 100) / 100));
   const log = (html, cls = '') => {
     window.__simLastLog.push(html.replace(/<[^>]+>/g, ''));
@@ -136,7 +157,7 @@ window.runSimMatch = async () => {
   };
 
   /** 셔틀 날아가는 모습 한 번 */
-  const playShot = async (shot, st, isLast, reason) => {
+  const playShot = async (shot, st, isLast, reason, quietEnd) => {
     const S = SHOTS[shot.type];
     const H = court.players.get(shot.hitter.id);
     const opp = shot.side === 'A' ? 'B' : 'A';
@@ -169,7 +190,7 @@ window.runSimMatch = async () => {
       if (shot.err === 'out') court.mark(opp === 'A' ? 0.5 - shot.d / 13.4 : 0.5 + shot.d / 13.4, shot.y, 'out');
       else if (shot.winner) court.mark(lx, shot.y, 'win');
     }
-    if (isLast) {
+    if (isLast && !quietEnd) {
       if (reason === 'error') court.showFx(shot.err === 'net' ? 'NET' : 'OUT', '#f87171');
       else court.showFx(shot.type === 'smash' ? 'SMASH!' : shot.type === 'kill' ? 'KILL!' : 'POINT!', '#fde047');
     }
@@ -213,6 +234,8 @@ window.runSimMatch = async () => {
           court.zones = { side: S, right, singles: !doubles };
           const near = Math.max(st.score.A, st.score.B) >= fmt.target - 2;
           const r = simulateRally({ st, eff, tactics, pressure: near ? 0.8 : 0 });
+          const hls = rallyHighlights(r, doubles);
+          const finals = hls.filter((h) => h.final);
           const first = r.shots[0];
           Object.entries(first.pos).forEach(([id, v]) => { const pl = court.players.get(id); if (pl) court.place(id, pl.side, v.d, v.y, ts === 0); });
           court.ball = { x: depthX(S, first.pos[server.id].d), y: first.pos[server.id].y, z: 1.0, holder: null };
@@ -221,7 +244,8 @@ window.runSimMatch = async () => {
           court.zones = null;
           for (let i = 0; i < r.shots.length; i++) {
             const sh = r.shots[i];
-            await playShot(sh, st, i === r.shots.length - 1, r.reason);
+            await playShot(sh, st, i === r.shots.length - 1, r.reason, finals.length > 0);
+            for (const h of hls.filter((x) => !x.final && x.at === i)) await showHl(h, false);
             const pp = ps(sh.hitter, sh.side);
             if (sh.type === 'smash') pp.smash++;
             if (sh.type === 'kill') pp.kill++;
@@ -230,6 +254,7 @@ window.runSimMatch = async () => {
             if (!sh.err && !sh.winner && sh.receiver && (sh.type === 'smash' || sh.type === 'kill')) ps(sh.receiver, sh.side === 'A' ? 'B' : 'A').def++;
             stamina[sh.hitter.id] = Math.max(35, (stamina[sh.hitter.id] ?? 100) - (0.5 + (99 - getStat(sh.hitter, 'phy')) / 160));
           }
+          for (const h of finals.slice(0, 2)) await showHl(h, true);
           const last = r.shots[r.shots.length - 1];
           longest = Math.max(longest, r.shots.length);
           if (r.reason === 'winner') { team[r.winner].win++; ps(last.hitter, last.side).win++; } else { team[last.side].err++; ps(last.hitter, last.side).err++; }
@@ -241,7 +266,8 @@ window.runSimMatch = async () => {
           const seq = r.shots.map((s) => `${escapeHtml(s.hitter.name)} ${SHOTS[s.type].name}${s.stroke === 'bh' ? '<span class="text-violet-300 text-[10px]">(백핸드)</span>' : ''}`);
           const flow = seq.length > 6 ? [...seq.slice(0, 2), `… (${seq.length - 4}타) …`, ...seq.slice(-2)] : seq;
           const how = r.reason === 'winner' ? `<b class="text-emerald-300">위닝샷!</b>` : `<span class="text-amber-300">${last.err === 'net' ? '네트에 걸림' : '아웃'} (실수)</span>`;
-          log(`<span class="sim-log-score">${st.score.A}-${st.score.B}</span> ${flow.join(' → ')} · ${how} <b class="${tcol(r.winner)}">${escapeHtml(tname(r.winner))} 득점</b>`);
+          const tags = hls.map((h) => { const H = HIGHLIGHTS[h.key]; return `<span class="sim-hl" style="color:${H.color};border-color:${H.color}66">${H.icon} ${H.name}${h.player ? ` · ${escapeHtml(h.player.name)}` : ''}</span>`; }).join(' ');
+          log(`<span class="sim-log-score">${st.score.A}-${st.score.B}</span> ${flow.join(' → ')} · ${how} <b class="${tcol(r.winner)}">${escapeHtml(tname(r.winner))} 득점</b>${tags ? `<br>${tags}` : ''}`);
           const fresh = [...new Set(r.shots.flatMap((s) => s.notes))].filter((k) => notesSeen.get(k) === 1 && !r.__logged);
           fresh.forEach((k) => log(`📘 ${NOTES[k]}`, 'sim-log-note'));
           r.__logged = true;
@@ -279,7 +305,7 @@ window.runSimMatch = async () => {
     log('(모의경기 · 서버 기록·경험치 미반영)', 'text-slate-500');
     court.say(`${tname(winSide)} 승리!`, '경기 끝', 'hot');
     try { if (ts > 0) confetti({ particleCount: 140, spread: 90, origin: { y: 0.4 }, zIndex: 9999, disableForReducedMotion: true }); } catch (e) { /* 무시 */ }
-    renderPostMatch({ nameA, nameB, team, pstat, notesSeen, rubberResults, winSide, longest, secs: Math.round((performance.now() - start) / 1000) });
+    renderPostMatch({ nameA, nameB, team, pstat, notesSeen, rubberResults, winSide, longest, hlLog, secs: Math.round((performance.now() - start) / 1000) });
   } finally {
     setTimeout(() => court.stop(), 1500);
     if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
@@ -287,12 +313,12 @@ window.runSimMatch = async () => {
 };
 
 /** 경기 후: 결과·선수 기록·오늘 배운 전술 */
-function renderPostMatch({ nameA, nameB, team, pstat, notesSeen, rubberResults, winSide, longest }) {
+function renderPostMatch({ nameA, nameB, team, pstat, notesSeen, rubberResults, winSide, longest, hlLog = [] }) {
   const el = document.getElementById('simPostMatchStats');
   if (!el) return;
   const tn = (s) => escapeHtml(s === 'A' ? nameA : nameB);
   const rows = Object.values(pstat).filter((x) => !x.bot).map((x) => {
-    const rating = Math.max(4.5, Math.min(9.9, 6.3 + x.win * 0.35 + x.kill * 0.15 + x.def * 0.12 - x.err * 0.25));
+    const rating = Math.max(4.5, Math.min(9.9, 6.3 + x.win * 0.3 + x.kill * 0.12 + x.def * 0.12 + x.hl * 0.25 - x.err * 0.25));
     return { ...x, rating };
   }).sort((a, b) => b.rating - a.rating);
   const motm = rows[0];
@@ -301,7 +327,10 @@ function renderPostMatch({ nameA, nameB, team, pstat, notesSeen, rubberResults, 
   const top = (side) => Object.entries(team[side].shots).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${shotName(k)} ${v}`).join(' · ');
   const basic = new Set(['serve_short_d', 'serve_long_s']);
   const learned = [...notesSeen.entries()].sort((a, b) => (basic.has(a[0]) ? 1 : 0) - (basic.has(b[0]) ? 1 : 0) || b[1] - a[1]).map(([k, v]) => `<li><b class="text-sky-200">${basic.has(k) ? '기본' : `${v}번`}</b> ${escapeHtml(NOTES[k])}</li>`).join('');
-  const table = `<div class="overflow-x-auto"><table class="w-full text-[11px] sm:text-xs text-left border-collapse"><thead><tr class="text-slate-400 border-b border-slate-700"><th class="py-1.5 pr-2">팀</th><th class="py-1.5 pr-2">선수</th><th class="py-1.5 text-center">평점</th><th class="py-1.5 text-center" title="위닝샷">🏸</th><th class="py-1.5 text-center" title="스매시">💥</th><th class="py-1.5 text-center" title="네트 킬">🕸️</th><th class="py-1.5 text-center" title="스매시 받아 내기">🛡️</th><th class="py-1.5 text-center" title="실수">❌</th></tr></thead><tbody>${rows.map((r) => `<tr class="border-b border-slate-800/80"><td class="py-1.5 pr-2 font-bold ${r.side === 'A' ? 'text-red-400' : 'text-blue-400'} truncate max-w-[5rem]">${tn(r.side)}</td><td class="py-1.5 pr-2 text-white font-bold truncate max-w-[7rem]">${escapeHtml(r.p.name)}</td><td class="py-1.5 text-center font-black ${r.rating >= 8 ? 'text-fut-gold' : r.rating >= 7 ? 'text-emerald-300' : 'text-slate-300'}">${r.rating.toFixed(1)}</td><td class="py-1.5 text-center text-fut-gold">${r.win || ''}</td><td class="py-1.5 text-center text-orange-300">${r.smash || ''}</td><td class="py-1.5 text-center text-emerald-300">${r.kill || ''}</td><td class="py-1.5 text-center text-cyan-300">${r.def || ''}</td><td class="py-1.5 text-center text-red-300">${r.err || ''}</td></tr>`).join('')}</tbody></table></div>`;
+  const hlGroups = {};
+  hlLog.forEach((h) => { const g = hlGroups[h.key] || (hlGroups[h.key] = { A: 0, B: 0, names: new Map() }); g[h.side]++; if (h.name) g.names.set(h.name, (g.names.get(h.name) || 0) + 1); });
+  const hlHtml = hlLog.length ? `<div class="mb-2 rounded-lg bg-amber-950/30 border border-amber-700/40 p-2"><div class="text-[11px] font-bold text-amber-300 mb-1">🏅 결정적 순간</div><div class="grid gap-1">${Object.entries(hlGroups).sort((a, b) => (b[1].A + b[1].B) - (a[1].A + a[1].B)).map(([k, g]) => { const H = HIGHLIGHTS[k]; const top = [...g.names.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([n, c]) => `${escapeHtml(n)}${c > 1 ? `×${c}` : ''}`).join(', '); return `<div class="flex flex-wrap items-center justify-between gap-x-2 text-[11px]"><span><span>${H.icon}</span> <b style="color:${H.color}">${H.name}</b>${top ? ` <span class="text-slate-400">${top}</span>` : ''}</span><span class="text-slate-300"><span class="text-red-300">${g.A}</span> : <span class="text-sky-300">${g.B}</span></span></div>`; }).join('')}</div></div>` : '';
+  const table = `<div class="overflow-x-auto"><table class="w-full text-[11px] sm:text-xs text-left border-collapse"><thead><tr class="text-slate-400 border-b border-slate-700"><th class="py-1.5 pr-2">팀</th><th class="py-1.5 pr-2">선수</th><th class="py-1.5 text-center">평점</th><th class="py-1.5 text-center" title="위닝샷">🏸</th><th class="py-1.5 text-center" title="스매시">💥</th><th class="py-1.5 text-center" title="네트 킬">🕸️</th><th class="py-1.5 text-center" title="스매시 받아 내기">🛡️</th><th class="py-1.5 text-center" title="결정적 순간">🏅</th><th class="py-1.5 text-center" title="실수">❌</th></tr></thead><tbody>${rows.map((r) => `<tr class="border-b border-slate-800/80"><td class="py-1.5 pr-2 font-bold ${r.side === 'A' ? 'text-red-400' : 'text-blue-400'} truncate max-w-[5rem]">${tn(r.side)}</td><td class="py-1.5 pr-2 text-white font-bold truncate max-w-[7rem]">${escapeHtml(r.p.name)}</td><td class="py-1.5 text-center font-black ${r.rating >= 8 ? 'text-fut-gold' : r.rating >= 7 ? 'text-emerald-300' : 'text-slate-300'}">${r.rating.toFixed(1)}</td><td class="py-1.5 text-center text-fut-gold">${r.win || ''}</td><td class="py-1.5 text-center text-orange-300">${r.smash || ''}</td><td class="py-1.5 text-center text-emerald-300">${r.kill || ''}</td><td class="py-1.5 text-center text-cyan-300">${r.def || ''}</td><td class="py-1.5 text-center text-amber-300">${r.hl || ''}</td><td class="py-1.5 text-center text-red-300">${r.err || ''}</td></tr>`).join('')}</tbody></table></div>`;
   el.innerHTML = `<div class="flex flex-wrap items-center gap-2 mb-2 border-b border-amber-700/30 pb-2"><i class="fa-solid fa-chart-simple text-amber-400"></i><span class="text-sm font-bold text-amber-200">경기 분석</span><span class="text-[10px] text-slate-500">(모의경기 · 서버 미반영)</span></div>
 <p class="text-sm font-black text-fut-gold mb-2">🏆 ${tn(winSide)} 승리</p>
 <div class="grid gap-1 mb-2">${res}</div>
@@ -313,6 +342,7 @@ ${motm ? `<p class="text-[11px] text-fut-gold mb-2">MVP <b>${escapeHtml(motm.p.n
 </div>
 <p class="text-[11px] text-slate-400 mb-1">백핸드로 친 샷(실수): <span class="text-red-300">${tn('A')}</span> ${team.A.bh}(${team.A.bhErr}) · <span class="text-sky-300">${tn('B')}</span> ${team.B.bh}(${team.B.bhErr})</p>
 <p class="text-[11px] text-slate-400 mb-2"><span class="text-red-300">${tn('A')}</span> 많이 친 샷: ${top('A') || '—'}<br><span class="text-sky-300">${tn('B')}</span> 많이 친 샷: ${top('B') || '—'}</p>
+${hlHtml}
 ${learned ? `<div class="mb-2 rounded-lg bg-sky-950/40 border border-sky-800/50 p-2"><div class="text-[11px] font-bold text-sky-300 mb-1">📘 오늘 경기에서 나온 전술</div><ul class="text-[11px] text-slate-200 space-y-1 list-none">${learned}</ul><p class="text-[10px] text-slate-500 mt-1">실수로 준 점수가 많은 팀은 '랠리형', 스매시를 많이 맞은 팀은 '로브를 맨 뒤까지'를 연습해 봐요.</p></div>` : ''}
 ${table}`;
   el.classList.remove('hidden');
