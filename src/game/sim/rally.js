@@ -48,6 +48,9 @@ export const NOTES = {
   net_tight: '헤어핀은 네트에 붙을수록 좋아요. 상대는 아래에서 위로 올릴 수밖에 없어요.',
   patience: '무리하게 세게 치면 실수가 나와요. 기회가 올 때까지 랠리를 이어 가요.',
   smash_win: '높이 뜬 셔틀은 기회! 위에서 아래로 내리꽂는 스매시로 끝내요.',
+  positioning: '위치 선정이 좋은 선수는 셔틀이 오기 전에 미리 가 있어요. 그래서 여유 있게 쳐요.',
+  off_role: '자기 자리가 아니면 힘들어요. 전위 선수는 뒤에서, 후위 선수는 네트 앞에서 실수가 늘어요.',
+  mixed: '혼합복식은 보통 여자 선수가 앞(네트), 남자 선수가 뒤(스매시)를 맡아요. 서로 잘하는 자리!',
 };
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -126,6 +129,12 @@ export function simulateRally(opts) {
   st.players[R].forEach((p) => { pos[p.id] = p.id === receiver.id ? { d: doubles ? 2.5 : 3.0, y: rY } : { d: 4.4, y: 1 - rY }; });
   if (doubles) { form[S] = 'fb'; }
   const shots = [];
+  /** 진형 자리로 가기: 위치 선정(POS)이 낮으면 조금 엇나간 곳에 서요 */
+  const place = (p, d, y) => {
+    const miss = (1 - eff(p, 'pst') / 99) * 0.8; // m
+    pos[p.id] = { d: clamp(d + (rng() * 2 - 1) * miss, 0.6, 6.4), y: clamp(y + ((rng() * 2 - 1) * miss) / COURT_W, 0.08, 0.92) };
+  };
+  const gender = (p) => (st.genders && st.genders[p.id]) || 'M';
   const snap = () => Object.fromEntries(Object.entries(pos).map(([k, v]) => [k, { ...v }]));
 
   let hitter = server; let side = S;
@@ -153,10 +162,15 @@ export function simulateRally(opts) {
       const safe = sty === 'rally' ? 1.6 : sty === 'attack' ? 0.7 : 1;
       const s = (k) => eff(hitter, k) / 70;
       const w = [];
+      // 자기 자리가 아니면 그 자리 기술이 약해져요 (전위가 뒤에서 스매시, 후위가 앞에서 네트)
+      const role = hitter.pos;
+      const offBack = doubles && myD > 4.2 && role === 'Front';
+      const offFront = doubles && myD < 2.4 && role === 'Rear';
+      if ((offBack || offFront) && rng() < 0.35) notes.push('off_role');
       if (UP.has(inc.type)) {
         // 높이 떠서 뒤로 온 셔틀: 공격 기회
         const late = inc.q; // 좋은 클리어일수록 스매시가 어려워요
-        w.push(['smash', 3 * s('sho') * atk * (1 - late * 0.55) * (doubles ? 1.35 : 0.85)]);
+        w.push(['smash', 3 * s('sho') * atk * (1 - late * 0.55) * (doubles ? 1.35 : 0.85) * (offBack ? 0.65 : 1)]);
         w.push(['drop', 2 * s('dri') * (doubles ? 0.8 : 1.3)]);
         w.push(['clear', 1.5 * s('pas') * safe * (doubles ? 0.45 : 1.3) * (0.6 + late)]);
       } else if (FAST.has(inc.type)) {
@@ -172,10 +186,10 @@ export function simulateRally(opts) {
       } else {
         // 짧은 셔틀 (드롭·헤어핀·블록·짧은 서브)
         const loose = inc.q < 0.35;
-        w.push(['net', 2.5 * s('dri')]);
+        w.push(['net', 2.5 * s('dri') * (offFront ? 0.75 : 1)]);
         w.push(['push', 1.4 * s('wrk')]);
         w.push([doubles ? 'lift' : 'clear', 2 * safe]);
-        if (loose) w.push(['kill', 4.2 * s('int') * atk]);
+        if (loose) w.push(['kill', 4.2 * s('int') * atk * (offFront ? 0.6 : 1)]);
         if (inc.type === 'serveShort' && doubles) w.push(['push', 1.2]);
       }
       type = pickWeighted(w, rng);
@@ -188,6 +202,7 @@ export function simulateRally(opts) {
     if (sty === 'rally') errP *= 0.75;
     if (sty === 'attack' && (type === 'smash' || type === 'kill' || type === 'drive')) errP *= 1.2;
     if (opts.pressure) errP *= 1 + opts.pressure * (1.2 - eff(hitter, 'cmp') / 100);
+    if (doubles && ((myD > 4.2 && hitter.pos === 'Front') || (myD < 2.4 && hitter.pos === 'Rear'))) errP *= 1.25;
     // 3) 어디로?
     const target = tac.target || 'middle';
     const recvTeam = st.players[oppSide];
@@ -232,18 +247,25 @@ export function simulateRally(opts) {
         form[side] = 'ss';
         const ys = [0.27, 0.73];
         const sorted = [...mates].sort((a, b) => pos[a.id].y - pos[b.id].y);
-        sorted.forEach((p, i) => { pos[p.id] = { d: 3.8, y: ys[i] }; });
+        sorted.forEach((p, i) => place(p, 3.8, ys[i]));
         if (before !== 'ss' && inc) notes.push('defense_ss');
       } else if (inc) {
         form[side] = 'fb';
         const hitterFront = myD < 2.6;
-        pos[hitter.id] = hitterFront ? { d: 1.9, y: clamp(pos[hitter.id].y, 0.3, 0.7) } : { d: 4.4, y: clamp(ty, 0.25, 0.75) };
-        if (partner) pos[partner.id] = hitterFront ? { d: 4.5, y: 0.5 } : { d: 1.9, y: clamp(ty, 0.32, 0.68) };
+        let frontP = hitterFront ? hitter : partner;
+        let backP = hitterFront ? partner : hitter;
+        // 혼합복식: 여자 선수 앞, 남자 선수 뒤
+        if (st.mixed && partner) {
+          const fem = mates.find((p) => gender(p) === 'F'); const mal = mates.find((p) => gender(p) !== 'F');
+          if (fem && mal) { frontP = fem; backP = mal; if (before !== 'fb' && rng() < 0.2) notes.push('mixed'); }
+        }
+        if (frontP) place(frontP, 1.9, clamp(frontP === hitter ? pos[hitter.id].y : ty, 0.32, 0.68));
+        if (backP) place(backP, backP === hitter ? 4.4 : 4.5, backP === hitter ? clamp(ty, 0.25, 0.75) : 0.5);
         if (before !== 'fb' && (type === 'smash' || type === 'drop')) notes.push('attack_fb');
       }
     } else if (inc) {
       // 단식: 치고 나면 홈으로
-      pos[hitter.id] = { d: 3.3, y: 0.5 };
+      place(hitter, 3.3, 0.5);
       if (rng() < 0.08) notes.push('home');
     }
     // 받는 팀에서 가장 가까운 사람
@@ -259,7 +281,8 @@ export function simulateRally(opts) {
     const rs = FAST.has(type) ? (eff(recv, 'def') + eff(recv, 'ref')) / 2
       : SHORT.has(type) ? (eff(recv, 'pac') + eff(recv, 'dri')) / 2
         : type === 'drive' ? (eff(recv, 'ref') + eff(recv, 'wrk')) / 2 : eff(recv, 'pac');
-    let reach = base - q * 0.15 - Math.max(0, D - 1.6) * 0.035 * (1.25 - eff(recv, 'pac') / 99) + (rs - 60) / 240;
+    let reach = base - q * 0.15 - Math.max(0, D - 1.6) * 0.035 * (1.25 - eff(recv, 'pac') / 99) + (rs - 60) / 240 + (eff(recv, 'pst') - 60) / 600;
+    if (D < 1.1 && eff(recv, 'pst') >= 70 && rng() < 0.2) notes.push('positioning');
     // 나란히 선 두 사람 가운데: 서로 미루다 놓침
     if (doubles && form[oppSide] === 'ss' && Math.abs(ty - 0.5) < 0.07 && inc) {
       reach -= 0.07;
@@ -287,7 +310,7 @@ export function simulateRally(opts) {
     if (doubles) {
       const partner = recvTeam.find((p) => p.id !== recv.id);
       if (partner) {
-        if (S0.dir === 'up') { pos[partner.id] = { d: 1.9, y: 0.5 }; form[oppSide] = 'fb'; } else if (form[oppSide] !== 'fb') { pos[partner.id] = { d: 3.8, y: ty < 0.5 ? 0.73 : 0.27 }; }
+        if (S0.dir === 'up') { place(partner, 1.9, 0.5); form[oppSide] = 'fb'; } else if (form[oppSide] !== 'fb') { place(partner, 3.8, ty < 0.5 ? 0.73 : 0.27); }
       }
     }
     inc = { type, q, d: td, y: ty };

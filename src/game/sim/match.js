@@ -9,7 +9,7 @@ import confetti from 'canvas-confetti';
 import { liveCourt, depthX } from './court.js';
 import { simulateRally, applyPoint, gameWinner, serveInfo, SHOTS, NOTES } from './rally.js';
 import { getTactic, TACTIC_OPTIONS } from './tactics.js';
-import { simSlotTeam, simSlotName, countSimTeam, getSimLineup } from './roster.js';
+import { simSlotTeam, simSlotName, countSimTeam, getSimLineup, genderOf } from './roster.js';
 import { getStat } from '../stats.js';
 import { escapeHtml, sleep } from '../utils.js';
 import { josa } from './josa.js';
@@ -44,6 +44,10 @@ window.simClearLog = () => {
 function buildRubbers(event, A, B) {
   const D1 = { kind: 'D', label: '복식', a: A.doubles1, b: B.doubles1 };
   if (event === 'doubles') return [D1];
+  if (event === 'mixed') {
+    const ok = A.mixed && B.mixed;
+    return [{ kind: 'D', mixed: !!ok, label: ok ? '혼합복식' : '복식 (혼복 인원 부족)', a: ok ? A.mixed : A.doubles1, b: ok ? B.mixed : B.doubles1 }];
+  }
   if (event === 'singles') return [{ kind: 'S', label: '단식', a: [A.single], b: [B.single] }];
   return [
     { ...D1, label: '1경기 · 복식' },
@@ -174,7 +178,7 @@ window.runSimMatch = async () => {
 
   const start = performance.now();
   try {
-    log(`<b class="text-amber-300">━━ ${escapeHtml(nameA)} vs ${escapeHtml(nameB)} · ${event === 'team' ? '단체전 (복식·단식·복식, 2승 먼저)' : event === 'doubles' ? '복식' : '단식'} · ${fmt.label} ━━</b>`, 'sim-log-head');
+    log(`<b class="text-amber-300">━━ ${escapeHtml(nameA)} vs ${escapeHtml(nameB)} · ${event === 'team' ? '단체전 (복식·단식·복식, 2승 먼저)' : event === 'doubles' ? '복식' : event === 'mixed' ? '혼합복식' : '단식'} · ${fmt.label} ━━</b>`, 'sim-log-head');
     const tacLine = (side) => { const t = tactics[side]; return `${escapeHtml(tname(side))}: ${TACTIC_OPTIONS.style.opts[t.style]} · ${TACTIC_OPTIONS.target.opts[t.target]} · 서브 ${TACTIC_OPTIONS.serve.opts[t.serve]}`; };
     log(`🎯 팀 전술 — ${tacLine('A')} / ${tacLine('B')}`, 'text-slate-400');
     if (fmt.target === 15) log('📘 새 규칙: 2027년부터 한 게임은 15점! 14-14가 되면 2점을 앞서야 이기고, 20-20이면 다음 1점으로 끝나요.', 'sim-log-note');
@@ -191,14 +195,15 @@ window.runSimMatch = async () => {
       log(`<b class="text-amber-200">▶ ${rb.label}</b> — <span class="${tcol('A')}">${pa.map(nm).join(' · ')}</span> vs <span class="${tcol('B')}">${pb.map(nm).join(' · ')}</span>`, 'sim-log-head');
       for (let g = 0; g < fmt.games; g++) {
         if (games.A * 2 > fmt.games || games.B * 2 > fmt.games) break;
-        const st = { score: { A: 0, B: 0 }, serving: firstServe, doubles, players: { A: pa, B: pb }, right: { A: pa[0].id, B: pb[0].id } };
+        const st = { score: { A: 0, B: 0 }, serving: firstServe, doubles, mixed: !!rb.mixed, genders: Object.fromEntries([...pa, ...pb].map((p) => [p.id, genderOf(p)])), players: { A: pa, B: pb }, right: { A: pa[0].id, B: pb[0].id } };
         const gl = `${rb.label}${fmt.games > 1 ? ` ${g + 1}게임` : ''}`;
         court.flip = g === 1;
         let intervalDone = false;
         setBoard(st.score, games, gl);
         court.start();
         court.say(`${gl} 시작! ${tname(st.serving)} 서브부터`, '시작', 'info');
-        court.note(doubles ? NOTES.serve_short_d : NOTES.serve_long_s);
+        court.note(rb.mixed ? NOTES.mixed : doubles ? NOTES.serve_short_d : NOTES.serve_long_s);
+        if (rb.mixed && g === 0) { log(`📘 ${NOTES.mixed}`, 'sim-log-note'); showNote('mixed'); }
         await court.wait(700);
         let gw = null;
         while (!(gw = gameWinner(st.score, fmt.target, fmt.cap))) {

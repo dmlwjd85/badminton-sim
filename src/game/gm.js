@@ -40,6 +40,18 @@ await setDoc(docRef, { [statKey]: newVal }, { merge: true });
 } catch (e) { console.error("setRecord Error:", e); window.customAlert(`기록 수정 에러:\n${e.message}`); }
 };
 
+/** 성별 바꾸기 (혼합복식·기본 얼굴에 쓰여요) */
+window.setPlayerGender = async (pId, g) => {
+try {
+checkAuthReady();
+if (!window.playerState.isGM || (g !== 'M' && g !== 'F')) return;
+const p = (window.allPlayersData || []).find((x) => x.id === pId);
+const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', 'player_' + getSafeDocId(pId));
+await setDoc(docRef, { gender: g, ...(p && p.name ? { name: p.name } : {}) }, { merge: true });
+if (p && p.name) GENDER_MAP[p.name] = g;
+} catch (e) { console.error('setPlayerGender Error:', e); window.customAlert(`성별 저장 에러:\n${e.message}`); }
+};
+
 window.claimWage = async () => {
 try {
 checkAuthReady();

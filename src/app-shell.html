@@ -231,10 +231,11 @@
 </div>
 
 <div id="gmAgeManager" class="hidden mt-2 bg-slate-900/90 p-3 rounded-xl border border-fut-gold shadow-lg flex justify-between items-center relative z-30">
-<span class="text-xs font-bold text-slate-300 flex items-center">나이 설정 (마스터):</span>
+<span class="text-xs font-bold text-slate-300 flex items-center">나이·성별 (마스터):</span>
 <div class="flex items-center gap-2">
 <input type="number" id="gmInputAge" class="w-16 bg-transparent text-center border-b border-slate-600 focus:border-emerald-500 focus:outline-none transition-colors m-0 p-0 text-emerald-400 font-display text-xl leading-none" onchange="window.setRecord(window.selectedPlayerId, 'age', this.value)">
 <span class="text-xs text-slate-400">세</span>
+<select id="gmInputGender" aria-label="성별" onchange="window.setPlayerGender(window.selectedPlayerId, this.value)" class="ml-2 min-h-[32px] bg-slate-800 border border-slate-600 rounded-lg px-2 text-white text-sm font-bold"><option value="M">남</option><option value="F">여</option></select>
 </div>
 </div>
 
@@ -478,6 +479,7 @@
 <select id="simEvent" onchange="window.renderSimMatchTab()" class="bg-slate-900 border border-amber-700/50 rounded-lg px-2 py-1.5 text-white text-[12px]">
 <option value="team" selected>단체전 (복식·단식·복식)</option>
 <option value="doubles">복식 (2대2)</option>
+<option value="mixed">혼합복식 (남녀 2대2)</option>
 <option value="singles">단식 (1대1)</option>
 </select>
 </label>
