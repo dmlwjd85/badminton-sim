@@ -4,8 +4,8 @@
 // Vite 빌드 시 .env의 VITE_APP_ID 사용, 없으면 기본값 (기존 단일 HTML과 동일)
 export const appId = (import.meta.env && import.meta.env.VITE_APP_ID) || (typeof globalThis.__app_id !== 'undefined' ? globalThis.__app_id : 'sambong-badminton');
 
-/** 처음 명단은 비워 둬요. 마스터J가 '신규 선수 등록'으로 한 명씩 넣어요 */
-export const INITIAL_PLAYERS = [];
+/** 처음 명단. 더 넣을 사람은 마스터J가 '신규 선수 등록'으로 넣어요 */
+export const INITIAL_PLAYERS = ['백소윤', '정지은', '정예람', '박정민', '정의정', '고새연', '박도담', '신희영', '김병우'];
 
 export let ALLOWED_PLAYERS = [...INITIAL_PLAYERS];
 
