@@ -195,7 +195,7 @@ pad.appendChild(btn);
 });
 document.getElementById('btnPinBack')?.addEventListener('click', () => showLoginOverlay());
 document.getElementById('btnGuestEnter')?.addEventListener('click', () => enterGuest());
-document.getElementById('btnStaffGm1')?.addEventListener('click', () => openPinFor('gm1', '선생님', 'gm'));
+document.getElementById('btnStaffGm1')?.addEventListener('click', () => openPinFor('gm1', '마스터J', 'gm'));
 document.getElementById('btnStaffGm2')?.addEventListener('click', () => openPinFor('gm2', '코치님', 'gm'));
 }
 
@@ -334,7 +334,7 @@ return;
 didRememberEnter = true;
 if (id === 'guest') { enterGuest(); return; }
 if (id === 'gm1' || id === 'gm2') {
-let name = id === 'gm1' ? '선생님' : '코치님';
+let name = id === 'gm1' ? '마스터J' : '코치님';
 try {
 const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', 'player_' + id));
 if (snap.exists()) {
@@ -431,7 +431,7 @@ window.playerState = { ...stripPrivate(data), id: safeDocId, isGM, isGuest: fals
 } else {
 if (mode !== 'set') return abandoned() ? 'stale' : 'need-set';
 const baseData = {
-name: isGM ? (pId === 'gm1' ? '감독 J' : '수석코치 J') : pId,
+name: isGM ? (pId === 'gm1' ? '마스터J' : '코치님') : pId,
 pin: pinText,
 pos: isGM ? 'All' : '미정',
 ...seasonStartStatMap(STAT_BASE),

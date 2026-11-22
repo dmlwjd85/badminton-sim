@@ -1,4 +1,4 @@
-// 개발용 시작 데이터: 선수 31명 (포지션·능력치 다양하게), 감독 계정 gm1 (PIN 1234)
+// 개발용 시작 데이터: 선수 31명 (포지션·능력치 다양하게), 마스터J 계정 gm1 (PIN 1234)
 const NAMES = ['김단엘', '김다래', '김라희', '김민지', '김사랑비', '김지훈', '노승희', '박소담', '박소윤', '박준수', '박하율', '박현수', '백시율',
   '석서영', '이가온', '이동해', '이시형', '이예주', '이준용', '이지안', '인시진', '임은영', '정의영', '정의정', '조이담', '최윤희', '함인솔', '황주하', '황훈태', '황혜민', '황혜윤'];
 const POS = ['Rear', 'Front', 'All', 'Single', 'Rear', 'Front', 'All', 'Rear', '미정', 'Front'];
@@ -16,7 +16,7 @@ export function seed() {
     KEYS.forEach((k) => { p[k] = 52 + Math.floor(rnd() * 22) + (pos === 'Rear' && (k === 'sho' || k === 'pas') ? 10 : 0); });
     out[`${base}/players/player_${name}`] = p;
   });
-  out[`${base}/players/player_gm1`] = { name: '선생님', pin: '1234' };
+  out[`${base}/players/player_gm1`] = { name: '마스터J', pin: '1234' };
   out[`${base}/config/season`] = { season: 2, started: true, startedAt: '2026-09-01T00:00:00.000Z' };
   out[`${base}/config/announcement`] = { text: '', updatedAt: '' };
   return out;
