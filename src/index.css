@@ -1,0 +1,868 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 쨈 폰트 v1.0.5 (src/assets/fonts/jjaem). 글꼴 이름은 여기서만 바꿔요.
+     로고(SAMBONG FC)는 글꼴 대신 SVG 그림이에요(src/assets/logo, 쨈 제목 컬러로 만듦).
+     --font-title : 28px 이상 제목. 쨈 본문 Bold(700). 제목 후보 3개(입체 단색·평면+그림자·본문 700)를
+                    같은 화면에서 비교해 가장 또렷하고 힘 있는 본문 700으로 정했어요
+     --font-body  : 본문·버튼·28px 미만 제목(굵게 700)
+     --font-num   : 능력치·점수 숫자. 폭이 좁은 Bebas Neue 유지, 한글은 쨈 본문으로 */
+  --font-title: "JJAEM Body", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: "JJAEM Body", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "Bebas Neue", "Oswald", "JJAEM Body", sans-serif;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body, #root {
+  background-color: #07140e;
+  color: #f8fafc;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(ellipse at 50% -8%, rgba(56, 255, 142, 0.14), transparent 42%),
+    radial-gradient(ellipse at 80% 110%, rgba(232, 194, 113, 0.08), transparent 40%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 28px),
+    linear-gradient(180deg, #0d2418 0%, #07140e 38%, #050c09 100%);
+}
+/* 제목 글꼴: 모든 제목은 쨈 본문 Bold. 큰 제목(28px 이상, 그리고 640px 이상에서 커지는 sm: 제목 — 모두 12개)은
+   폭과 상관없이 같은 모양이에요. 낱말 중간에서 줄이 나뉘지 않고, 쨈 본문은 700이 가장 굵어서
+   얇은 테두리와 그림자로 조금 더 굵고 떠 보이게 해요(QA B안) */
+h1, h2, h3, .font-display { font-family: var(--font-body); font-weight: 700; letter-spacing: 0; }
+:is(h1, h2, h3, h4, .font-display):is(.text-3xl, .text-4xl, .text-5xl, .text-6xl, .text-7xl, .text-8xl, .text-9xl, .sm\:text-3xl, .sm\:text-4xl) { font-family: var(--font-title); font-weight: 700; letter-spacing: 0; word-break: keep-all; font-synthesis: none; -webkit-text-stroke: .035em currentColor; paint-order: stroke fill; text-shadow: none; }
+/* 그림자는 filter로 그려요. WebKit은 text-stroke가 있으면 text-shadow를 그리지 않아요.
+   원래 drop-shadow-* 그림자가 있는 제목(출석부 h2)은 그 그림자를 그대로 둬요.
+   출석부 h2는 WebKit이 keep-all에서 "(" 뒤로 줄을 나눠서 initApp.js에서 !break-normal로 예전처럼 둬요 */
+:is(h1, h2, h3, h4, .font-display):is(.text-3xl, .text-4xl, .text-5xl, .text-6xl, .text-7xl, .text-8xl, .text-9xl, .sm\:text-3xl, .sm\:text-4xl):not([class*="drop-shadow"]) { filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 0 12px rgba(250,204,21,.18)); }
+/* text-stroke 두께는 제목 크기로 계산돼 물려받아요. 제목 바로 안의 작은 글자·그림·그림문자는 테두리 없이 둬요 */
+:is(h1, h2, h3, h4, .font-display):is(.text-3xl, .text-4xl, .text-5xl, .text-6xl, .text-7xl, .text-8xl, .text-9xl, .sm\:text-3xl, .sm\:text-4xl) > :is(span, img, .emoji) { -webkit-text-stroke: 0; }
+/* 맨 위 로고 그림: 예전 48px 글자와 같은 크기(높이 60px, 폭 288px)·한 줄 */
+.sambong-logo { display: block; width: 220.8px; max-width: 100%; height: auto; aspect-ratio: 4600 / 1250; margin: -6px auto; overflow: hidden; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0a1912; }
+::-webkit-scrollbar-thumb { background: #1f422e; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #e8c271; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f5a; border-radius: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #e8c271; }
+
+/* 모의경기: 모바일 가로 스크롤·잘림 방지 */
+#tabSim { overflow-x: hidden; }
+.sim-tactical-strip {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+.sim-tactical-strip .sim-tactical-chip {
+  flex-shrink: 0;
+}
+
+#simPitchCaption {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+.sim-match-log-panel .sim-broadcast-img {
+  border-color: rgba(232, 194, 113, 0.28);
+}
+.sim-match-log-panel .sim-broadcast-img:last-child {
+  box-shadow: 0 0 0 1px rgba(56, 255, 142, 0.22), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.glass-panel { background: rgba(17, 41, 29, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(232, 194, 113, 0.2); }
+.locker-panel { background: linear-gradient(180deg, #2a2a35 0%, #1a1a24 100%); box-shadow: inset 0 10px 30px rgba(0,0,0,0.5); border: 2px solid #3f3f5a; }
+
+.tier-badge-rookie { background: linear-gradient(135deg, #cd7f32, #8b4513); color: white; border-color: #e5b083; } 
+.tier-badge-semipro { background: linear-gradient(135deg, #e5e4e2, #a9a9a9); color: black; border-color: #ffffff; } 
+.tier-badge-pro { background: linear-gradient(135deg, #ffd700, #daa520); color: black; border-color: #fffacd; } 
+.tier-badge-worldclass { background: linear-gradient(135deg, #8a2be2, #4b0082); color: white; border-color: #d8bfd8; } 
+.tier-badge-challenger { background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); background-size: 200% 200%; animation: rainbow-bg 3s ease infinite; color: white; text-shadow: 0 0 4px black; border-color: gold; } 
+
+@keyframes rainbow-bg { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+
+.fut-card {
+clip-path: polygon(8% 0, 92% 0, 100% 8%, 100% 92%, 92% 100%, 8% 100%, 0 92%, 0 8%);
+box-shadow: 0 22px 48px rgba(0,0,0,0.62), 0 0 0 1px rgba(255,255,255,0.12), inset 0 0 22px rgba(255,255,255,0.18);
+transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease;
+position: relative;
+}
+.fut-card:hover {
+transform: translateY(-6px) rotateX(4deg);
+box-shadow: 0 28px 56px rgba(0,0,0,0.7), 0 0 28px rgba(232,194,113,0.18), inset 0 0 22px rgba(255,255,255,0.22);
+}
+.fut-card::after {
+content: ''; position: absolute; top: 3px; left: 3px; right: 3px; bottom: 3px;
+clip-path: polygon(8% 0, 92% 0, 100% 8%, 100% 92%, 92% 100%, 8% 100%, 0 92%, 0 8%);
+border: 1.5px solid rgba(255,255,255,0.34); pointer-events: none; z-index: 5;
+}
+.fut-career-card .fut-card-pitch-bg {
+position: absolute; inset: 0; z-index: 0;
+background:
+  linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.52) 100%),
+  repeating-linear-gradient(90deg, rgba(255,255,255,0.07) 0 3px, transparent 3px 16px),
+  radial-gradient(ellipse at 50% 0%, rgba(255,255,240,0.22), transparent 42%),
+  radial-gradient(ellipse at 18% 88%, rgba(56,255,142,0.12), transparent 40%);
+opacity: 0.62;
+}
+.fut-career-card .fut-card-lights {
+position: absolute; inset: 0; z-index: 2; pointer-events: none;
+background:
+  radial-gradient(ellipse at 20% -8%, rgba(255,255,255,0.28), transparent 36%),
+  radial-gradient(ellipse at 80% -8%, rgba(255,248,220,0.22), transparent 34%);
+mix-blend-mode: screen;
+opacity: 0.85;
+}
+.fut-career-card .fut-card-watermark {
+position: absolute; right: 10px; bottom: 86px; z-index: 2; pointer-events: none;
+font-family: var(--font-num);
+font-size: 3.4rem; letter-spacing: 0.12em; color: rgba(255,255,255,0.08);
+transform: rotate(-18deg);
+}
+.fut-career-card .fut-card-foil {
+position: absolute; inset: -40%; z-index: 1; pointer-events: none;
+background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.28) 48%, transparent 62%);
+animation: cardFoilSweep 5.5s ease-in-out infinite;
+}
+@keyframes cardFoilSweep {
+  0% { transform: translateX(-18%) rotate(12deg); opacity: 0.15; }
+  45% { opacity: 0.55; }
+  100% { transform: translateX(28%) rotate(12deg); opacity: 0.12; }
+}
+.fut-nameplate {
+background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.42));
+border-top: 1px solid rgba(255,255,255,0.28);
+border-bottom: 1px solid rgba(0,0,0,0.25);
+box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.fut-portrait-frame {
+background:
+  linear-gradient(180deg, transparent 48%, rgba(0,0,0,0.38) 100%),
+  radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.08), transparent 62%);
+border-radius: 0.75rem;
+overflow: hidden;
+}
+.fut-portrait-img {
+width: 100%; height: 100%;
+object-fit: cover; object-position: center 28%;
+border-radius: 0.65rem;
+border: 2px solid rgba(255,255,255,0.35);
+box-shadow: 0 10px 22px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.25);
+filter: saturate(1.08) contrast(1.05);
+}
+.fut-portrait-fallback {
+width: 100%; height: 100%;
+border-radius: 0.65rem;
+display: flex; align-items: center; justify-content: center;
+font-size: 4.4rem; line-height: 1;
+border: 2px solid rgba(255,255,255,0.28);
+box-shadow: inset 0 -18px 28px rgba(0,0,0,0.35);
+}
+.manga-face { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; line-height: 0; background: linear-gradient(180deg, #e8eef5 0%, #c5d0dc 100%); }
+.manga-face-img { width: 100%; height: 100%; display: block; }
+.manga-face-card .manga-face-img,
+.manga-face-mini .manga-face-img,
+.manga-face-xl .manga-face-img {
+object-fit: contain;
+object-position: center 46%;
+transform: none;
+}
+.manga-face-pos-m,
+.manga-face-pos-f { transform: none; }
+.manga-face-md .manga-face-img,
+.manga-face-sm .manga-face-img {
+object-fit: cover;
+object-position: center 28%;
+}
+.manga-face-card {
+width: 100%; height: 100%;
+border-radius: 0.65rem;
+border: 2px solid rgba(255,255,255,0.35);
+box-shadow: 0 10px 22px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.25);
+}
+.fut-portrait-frame .manga-face-card,
+.fut-portrait-frame .fut-portrait-img {
+width: 100%;
+height: 100%;
+}
+.manga-face-mini {
+width: 3.5rem; height: 4.4rem;
+border-radius: 0.4rem;
+border: 1px solid rgba(255,255,255,0.35);
+box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+}
+.manga-face-xl {
+width: 4.2rem; height: 5.2rem;
+border-radius: 0.5rem;
+border: 1px solid rgba(255,255,255,0.3);
+box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.manga-face-md {
+width: 2.5rem; height: 2.5rem;
+border-radius: 50%;
+border: 1px solid rgba(255,255,255,0.25);
+}
+.manga-face-sm {
+width: 2rem; height: 2rem;
+border-radius: 50%;
+border: 1px solid rgba(255,255,255,0.25);
+}
+.fut-portrait-fallback.kit-m,
+.kit-m { background: linear-gradient(180deg, #1e3a5f 0%, #0f172a 55%, #14532d 100%); }
+.fut-portrait-fallback.kit-f,
+.kit-f { background: linear-gradient(180deg, #4c1d95 0%, #1e1b4b 55%, #9d174d 100%); }
+.stat-mini-bar { width: 100%; height: 3px; background: rgba(0,0,0,0.28); border-radius: 99px; overflow: hidden; margin-top: 3px; }
+.stat-mini-bar > i { display: block; height: 100%; border-radius: 99px; background: currentColor; opacity: 0.85; }
+
+.card-rookie { background: linear-gradient(165deg, #f3d5ae 0%, #c4843a 38%, #7a4318 78%, #4a260c 100%); color: #fff8e7; }
+.card-semipro { background: linear-gradient(165deg, #f8fafc 0%, #cbd5e1 36%, #64748b 78%, #334155 100%); color: #0f172a; }
+.card-pro { background: linear-gradient(165deg, #fff7d1 0%, #f0c14b 34%, #b8860b 72%, #6b4a08 100%); color: #2a1a04; }
+.card-worldclass { background: linear-gradient(165deg, #ddd6fe 0%, #8b5cf6 32%, #5b21b6 70%, #1e1b4b 100%); color: #fff; border: 1px solid #e9d5ff; box-shadow: 0 0 28px rgba(139,92,246,0.58); }
+.card-challenger { background: linear-gradient(165deg, #44403c 0%, #171717 55%, #0a0a0a 100%); color: #fff; border: 2px solid #ffd700; box-shadow: 0 0 34px rgba(255,215,0,0.78); }
+.card-challenger::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: conic-gradient(transparent, rgba(255,215,0,0.3), transparent 30%); animation: rotate 4s linear infinite; z-index: -1; pointer-events: none; }
+@keyframes rotate { 100% { transform: rotate(1turn); } }
+
+.item-slot-mini {
+width: 36px; height: 36px;
+background-color: rgba(0,0,0,0.3);
+border: 1px solid rgba(255,255,255,0.2);
+border-radius: 50%;
+display: flex; align-items: center; justify-content: center;
+position: relative;
+transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+z-index: 20; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.item-slot-row {
+display: flex; justify-content: center; align-items: flex-start;
+gap: 6px; position: relative; z-index: 20;
+}
+.item-slot-row .item-slot-mini {
+position: relative !important;
+left: auto; top: auto; right: auto; bottom: auto;
+transform: none;
+width: 34px; height: 34px;
+}
+.item-slot-row .item-label { bottom: -11px; font-size: 8px; }
+
+.shop-cat-chip {
+flex-shrink: 0; font-size: 14px; font-weight: 800;
+min-height: 44px; padding: 8px 14px; border-radius: 999px;
+border: 1px solid rgba(168,85,247,0.35);
+background: rgba(15,23,42,0.75); color: #e9d5ff;
+}
+.shop-cat-chip.active {
+background: linear-gradient(180deg, #6d28d9, #4c1d95);
+border-color: rgba(216,180,254,0.7); color: #fff;
+}
+
+.card-skin-emerald { box-shadow: 0 0 28px rgba(16,185,129,0.45), 0 22px 48px rgba(0,0,0,0.55) !important; }
+.card-skin-gold { box-shadow: 0 0 30px rgba(234,179,8,0.55), 0 22px 48px rgba(0,0,0,0.55) !important; }
+.card-skin-crimson { box-shadow: 0 0 28px rgba(239,68,68,0.5), 0 22px 48px rgba(0,0,0,0.55) !important; }
+.card-skin-midnight { box-shadow: 0 0 26px rgba(59,130,246,0.42), 0 22px 48px rgba(0,0,0,0.55) !important; }
+.card-skin-sakura { box-shadow: 0 0 28px rgba(244,114,182,0.5), 0 22px 48px rgba(0,0,0,0.55) !important; }
+.card-skin-ice { box-shadow: 0 0 26px rgba(125,211,252,0.5), 0 22px 48px rgba(0,0,0,0.55) !important; }
+.card-skin-sun { box-shadow: 0 0 30px rgba(251,191,36,0.55), 0 22px 48px rgba(0,0,0,0.55) !important; }
+.card-skin-void { box-shadow: 0 0 28px rgba(148,163,184,0.35), 0 0 0 2px rgba(15,23,42,0.9), 0 22px 48px rgba(0,0,0,0.55) !important; }
+
+/* 💎 강화 단계별 시각적 이펙트 (CSS) */
+.eff-0.equipped { background-color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.8); box-shadow: 0 0 12px rgba(255,255,255,0.4); }
+.eff-1 { border-color: #ffffff !important; box-shadow: 0 0 8px rgba(255,255,255,0.9) !important; animation: effPulse 2s infinite; }
+.eff-2 { border-color: #3b82f6 !important; box-shadow: 0 0 15px rgba(59,130,246,0.9) !important; animation: effSpin 3s linear infinite; }
+.eff-3 { border-color: #a855f7 !important; box-shadow: 0 0 20px rgba(168,85,247,1) !important; animation: effFlame 1.5s alternate infinite; }
+.eff-4 { border-color: #eab308 !important; box-shadow: 0 0 25px rgba(234,179,8,1) !important; animation: effLightning 0.5s ease-in-out infinite alternate; }
+.eff-5 { border-color: #ef4444 !important; box-shadow: 0 0 35px rgba(239,68,68,1) !important; animation: rainbow-bg 2s infinite, effShake 0.1s infinite; background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); background-size: 200% 200%; }
+
+@keyframes effPulse { 0%, 100% { box-shadow: 0 0 5px #fff; } 50% { box-shadow: 0 0 15px #fff; } }
+@keyframes effSpin { 0% { box-shadow: 5px 5px 15px rgba(59,130,246,0.8), -5px -5px 15px rgba(59,130,246,0.8); } 50% { box-shadow: -5px 5px 15px rgba(59,130,246,0.8), 5px -5px 15px rgba(59,130,246,0.8); } 100% { box-shadow: 5px 5px 15px rgba(59,130,246,0.8), -5px -5px 15px rgba(59,130,246,0.8); } }
+@keyframes effFlame { 0% { box-shadow: 0 0 10px #a855f7, 0 -5px 10px #d946ef; } 100% { box-shadow: 0 0 20px #a855f7, 0 -15px 20px #d946ef; } }
+@keyframes effLightning { 0% { box-shadow: 0 0 10px #eab308, inset 0 0 5px #eab308; } 100% { box-shadow: 0 0 30px #fde047, inset 0 0 15px #fde047; } }
+@keyframes effShake { 0%, 100% { transform: translateX(0) translateY(0); } 25% { transform: translateX(-1px) translateY(1px); } 50% { transform: translateX(1px) translateY(-1px); } 75% { transform: translateX(-1px) translateY(-1px); } }
+
+.item-slot-mini .item-icon { font-size: 1.1rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); z-index: 2; position: relative; }
+.item-slot-mini .item-face-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: relative; z-index: 2; }
+.item-slot-face-below.item-slot-mini {
+width: 5rem !important;
+height: 5rem !important;
+position: relative !important;
+border-width: 2px;
+box-shadow: 0 0 20px rgba(56, 255, 142, 0.25);
+}
+
+/* 얼굴 슬롯: 절대배치하지 않고 초상 바로 아래에 두어 기본 썸네일이 얼굴을 가리지 않음 */
+.item-slot-mini.item-slot-face-below {
+position: relative;
+left: auto;
+top: auto;
+right: auto;
+bottom: auto;
+transform: none;
+z-index: 15;
+width: 32px;
+height: 32px;
+}
+.item-slot-mini.item-slot-face-below .item-label {
+bottom: -12px;
+font-size: 9px;
+}
+
+/* FM 감독 모드 느낌 텍스트 중계 */
+.sim-fm-log {
+color: #c9d1d9;
+text-shadow: 0 0 1px rgba(56, 255, 142, 0.15);
+}
+.item-slot-mini .item-label {
+position: absolute; bottom: -14px; font-size: 10px; font-weight: 900;
+color: inherit; opacity: 0.9; text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+white-space: nowrap; z-index: 2;
+}
+
+.mini-card { position: relative; transition: all 0.22s; overflow: hidden; }
+.mini-card:hover { transform: translateY(-6px) scale(1.05); box-shadow: 0 12px 26px rgba(56,255,142,0.22); border-color: #38ff8e; }
+.mini-card.selected { border-color: #e8c271; box-shadow: 0 0 18px rgba(232,194,113,0.62), 0 8px 18px rgba(0,0,0,0.35); }
+.mini-card.checked-in { opacity: 1; }
+.mini-card.checked-out { opacity: 0.55; filter: grayscale(35%); }
+.fut-mini {
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 42%),
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.16), transparent 48%);
+  min-height: 176px;
+}
+.fut-mini::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.16) 50%, transparent 60%);
+  opacity: 0.45;
+}
+.fut-mini .fut-mini-portrait img,
+.fut-mini-portrait-img {
+  width: 3.6rem; height: 4.6rem; object-fit: cover; object-position: center 28%;
+  border-radius: 0.4rem; border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+}
+.fut-mini-ovr { font-family: var(--font-num); letter-spacing: 0.04em; }
+
+.locker-checkbox { appearance: none; background-color: rgba(0,0,0,0.5); border: 2px solid #555; border-radius: 6px; display: inline-block; position: relative; cursor: pointer; transition: all 0.2s; width: 44px !important; height: 44px !important; }
+.locker-checkbox:checked { background-color: #38ff8e; border-color: #38ff8e; }
+.locker-checkbox:checked::after { content: '\f00c'; font-family: 'Font Awesome 6 Free'; font-weight: 900; color: #0a1912; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 16px; }
+
+.floating-text { position: absolute; pointer-events: none; animation: floatUpFade 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards; font-weight: 900; z-index: 9999; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
+@keyframes floatUpFade { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-50px) scale(1.5); opacity: 0; } }
+
+.tooltip { visibility: hidden; position: absolute; z-index: 50; background-color: #11291d; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; border: 1px solid #38ff8e; font-size: 0.75rem; bottom: 125%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+.has-tooltip:hover .tooltip { visibility: visible; opacity: 1; }
+.exp-bar-fill { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+
+.nav-tab { color: #94a3b8; border-bottom: 2px solid transparent; transition: all 0.3s; flex-shrink: 0; cursor: pointer; }
+.nav-tab:hover { color: #e2e8f0; border-bottom-color: #475569; }
+.nav-tab.active { color: #38ff8e; border-bottom-color: #38ff8e; font-weight: bold; text-shadow: 0 0 10px rgba(56,255,142,0.4); }
+
+.app-tab {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: #64748b; font-size: 12px; font-weight: 800; letter-spacing: 0.02em; line-height: 1.1;
+  background: transparent; border: 0; cursor: pointer; min-height: 58px; min-width: 0; padding: 6px 2px;
+}
+.app-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 640px) { .app-tab { font-size: 13px; } }
+.app-tab i { color: inherit; }
+.app-tab.active { color: #38ff8e; text-shadow: 0 0 10px rgba(56,255,142,0.35); }
+.subhub-chip {
+  flex-shrink: 0; font-size: 14px; font-weight: 800;
+  padding: 8px 14px; border-radius: 999px; min-height: 44px;
+  border: 1px solid rgba(148,163,184,0.35);
+  background: rgba(15,23,42,0.7); color: #cbd5e1;
+}
+.subhub-chip.active {
+  background: linear-gradient(180deg, #14532d, #052e16);
+  border-color: rgba(56,255,142,0.55); color: #bbf7d0;
+}
+
+.achieved-card { border-color: #e8c271; background-color: rgba(232, 194, 113, 0.1); box-shadow: 0 0 15px rgba(232, 194, 113, 0.2); }
+.unachieved-card { opacity: 0.6; filter: grayscale(80%); border-color: rgba(255,255,255,0.1); }
+.unachieved-card:hover { opacity: 0.9; filter: grayscale(40%); }
+
+/* 모의경기: 골·슈퍼세이브·킬패스 이펙트 */
+.sim-pitch-fx-goal {
+  animation: simPitchGoalPulse 1.4s ease-out;
+  box-shadow: 0 0 28px rgba(250, 204, 21, 0.55), inset 0 0 12px rgba(34, 197, 94, 0.25);
+  border-radius: 0.5rem;
+}
+.sim-pitch-fx-save {
+  animation: simPitchSavePulse 1.4s ease-out;
+  box-shadow: 0 0 26px rgba(34, 211, 238, 0.5), inset 0 0 10px rgba(6, 182, 212, 0.2);
+  border-radius: 0.5rem;
+}
+.sim-pitch-fx-kp {
+  animation: simPitchKpPulse 1.2s ease-out;
+  box-shadow: 0 0 22px rgba(192, 132, 252, 0.45), inset 0 0 8px rgba(167, 139, 250, 0.2);
+  border-radius: 0.5rem;
+}
+@keyframes simPitchGoalPulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  25% { transform: scale(1.015); filter: brightness(1.35); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes simPitchSavePulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  30% { transform: scale(1.012); filter: brightness(1.25) hue-rotate(-8deg); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes simPitchKpPulse {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.008); }
+  100% { transform: scale(1); }
+}
+.sim-badge-pulse { animation: simBadgePop 0.9s ease-out; }
+@keyframes simBadgePop {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  40% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.sim-broadcast-img--goal {
+  border-color: rgba(250, 204, 21, 0.65) !important;
+  animation: simBroadcastGoalIn 0.85s ease-out;
+  box-shadow: 0 4px 24px rgba(34, 197, 94, 0.35), 0 0 12px rgba(250, 204, 21, 0.25);
+}
+.sim-broadcast-img--save {
+  border-color: rgba(34, 211, 238, 0.65) !important;
+  animation: simBroadcastSaveIn 0.8s ease-out;
+  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.35);
+}
+.sim-broadcast-img--kp {
+  border-color: rgba(192, 132, 252, 0.65) !important;
+  animation: simBroadcastKpIn 0.75s ease-out;
+  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.3);
+}
+@keyframes simBroadcastGoalIn {
+  0% { transform: translateY(8px) scale(0.96); opacity: 0.5; }
+  50% { transform: translateY(-2px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes simBroadcastSaveIn {
+  0% { transform: translateX(-6px); opacity: 0.55; }
+  60% { transform: translateX(2px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+@keyframes simBroadcastKpIn {
+  0% { transform: scale(0.94); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 커리어 카드 티어 오라 */
+.card-aura { filter: drop-shadow(0 10px 18px rgba(0,0,0,0.45)); }
+.card-aura-rookie { filter: drop-shadow(0 0 16px rgba(184,115,51,0.45)); }
+.card-aura-semipro { filter: drop-shadow(0 0 16px rgba(203,213,225,0.4)); }
+.card-aura-pro { filter: drop-shadow(0 0 20px rgba(232,194,113,0.55)); }
+.card-aura-worldclass { filter: drop-shadow(0 0 24px rgba(139,92,246,0.62)); }
+.card-aura-challenger { filter: drop-shadow(0 0 28px rgba(255,215,0,0.7)); }
+
+.fut-mini-ovr-plate {
+  background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.42));
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 0.4rem;
+  padding: 0 0.35rem;
+  line-height: 1;
+}
+
+.compare-fut-mini {
+  width: 7.5rem;
+  padding: 0.7rem 0.5rem 0.6rem;
+  clip-path: polygon(8% 0, 92% 0, 100% 8%, 100% 92%, 92% 100%, 8% 100%, 0 92%, 0 8%);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.45), inset 0 0 12px rgba(255,255,255,0.16);
+}
+
+/* 모의경기: 고정 레드팀 vs 블루팀 배너 */
+.sim-vs-lock {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.sim-team-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  padding: 0.7rem 0.9rem;
+  min-height: 3.4rem;
+}
+.sim-team-banner--red {
+  background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 42%, #450a0a 100%);
+  border: 1px solid rgba(252,165,165,0.45);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 8px 20px rgba(127,29,29,0.35);
+}
+.sim-team-banner--blue {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 42%, #0f172a 100%);
+  border: 1px solid rgba(147,197,253,0.45);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 8px 20px rgba(30,58,138,0.35);
+}
+.sim-vs-badge {
+  align-self: center;
+  font-family: var(--font-num);
+  letter-spacing: 0.18em;
+  font-size: 1.35rem;
+  color: #fde68a;
+  text-shadow: 0 0 12px rgba(250,204,21,0.55);
+}
+
+/* TV 중계 스코어보드 */
+.sim-scoreboard {
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(250,204,21,0.35);
+  background: linear-gradient(180deg, #0b1220 0%, #020617 100%);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+#simScoreBar:not(.hidden) {
+  display: flex;
+}
+.sim-scoreboard-side {
+  flex: 1 1 8rem;
+  min-width: 7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+.sim-scoreboard-side--red {
+  background: linear-gradient(90deg, rgba(185,28,28,0.92), rgba(127,29,29,0.35));
+}
+.sim-scoreboard-side--blue {
+  background: linear-gradient(90deg, rgba(30,58,138,0.35), rgba(37,99,235,0.92));
+}
+.sim-scoreboard-kit {
+  font-family: var(--font-num);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  opacity: 0.85;
+}
+.sim-scoreboard-mid {
+  min-width: 6.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 0%, rgba(250,204,21,0.18), transparent 70%);
+  border-left: 1px solid rgba(250,204,21,0.25);
+  border-right: 1px solid rgba(250,204,21,0.25);
+  padding: 0.35rem 0.8rem;
+}
+
+.sim-clock-led {
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #111827, #020617);
+  box-shadow: inset 0 0 18px rgba(250,204,21,0.12), 0 0 16px rgba(250,204,21,0.15);
+}
+
+.sim-hud-tile {
+  background: linear-gradient(180deg, rgba(15,23,42,0.92), rgba(2,6,23,0.92));
+  border: 1px solid rgba(148,163,184,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+#simPitchPanel {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(250,204,21,0.08), transparent 42%),
+    linear-gradient(180deg, #10261a 0%, #050a08 100%) !important;
+}
+
+.feature-hidden { display: none !important; }
+
+.login-name-btn, .login-wide-btn, .pin-key, .tap-44 {
+  min-height: 48px;
+  min-width: 44px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f8fafc !important;
+}
+.login-name-btn, .login-wide-btn {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(187, 247, 208, 0.45);
+  background: #166534 !important;
+  color: #f8fafc !important;
+  padding: 10px 12px;
+}
+.login-name-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.pin-key {
+  border-radius: 16px;
+  background: #14532d !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(232, 194, 113, 0.45);
+}
+.pin-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(232, 194, 113, 0.8);
+  background: transparent;
+}
+.pin-dot.on { background: #e8c271; }
+.tap-44 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#mainUI button, #loginOverlay button, #tabSim select, #mainUI input[type="radio"] {
+  min-height: 44px;
+}
+#mainUI input[type="radio"] { min-width: 44px; }
+#playerTrainingPanel button { font-size: 14px; min-width: 44px; min-height: 44px; }
+
+#mainUI .text-\[7px\], #mainUI .text-\[8px\], #mainUI .text-\[9px\], #mainUI .text-\[10px\], #mainUI .text-\[11px\],
+#loginOverlay .text-\[7px\], #loginOverlay .text-\[8px\], #loginOverlay .text-\[9px\], #loginOverlay .text-\[10px\], #loginOverlay .text-\[11px\],
+.app-dialog .text-\[7px\], .app-dialog .text-\[8px\], .app-dialog .text-\[9px\], .app-dialog .text-\[10px\], .app-dialog .text-\[11px\] {
+  font-size: 12px !important;
+}
+.app-dialog { font-size: 14px; }
+.app-dialog button { min-height: 44px; font-size: 15px; }
+
+@media (max-width: 360px) {
+  #lockerGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* 전체 메뉴 시트 */
+.menu-sheet-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 72px; border-radius: 14px; border: 1px solid rgba(148,163,184,0.25);
+  background: rgba(15,23,42,0.75); color: #e2e8f0; font-size: 13px; font-weight: 800;
+}
+.menu-sheet-item i { font-size: 18px; color: #38ff8e; }
+.menu-sheet-item.is-fav { border-color: rgba(56,255,142,0.55); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   테마: FM27(어두운 남색 데이터 화면) × FC 온라인(FUT 카드·민트/골드 포인트)
+   위의 예전 스타일을 덮어써요. 색은 여기 변수만 바꾸면 돼요.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --ui-bg-0: #060a12;
+  --ui-bg-1: #0b1220;
+  --ui-panel: #0f1828;
+  --ui-panel-2: #131f33;
+  --ui-line: #1f2d44;
+  --ui-line-2: #2a3b57;
+  --ui-text-dim: #8a9ab3;
+  --ui-mint: #2ee6a6;      /* FC 온라인 포인트 */
+  --ui-gold: #f2c35b;
+  --ui-sky: #4cb4ff;
+}
+body, #root {
+  background-color: var(--ui-bg-0);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(46,230,166,0.10), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(76,180,255,0.07), transparent 60%),
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(180deg, #0a1322 0%, var(--ui-bg-0) 45%, #04070d 100%);
+  background-size: auto, auto, 32px 32px, 32px 32px, auto;
+  background-attachment: fixed;
+}
+
+/* 패널: FM 데이터 패널처럼 각지고 얇은 테두리, 위쪽에 포인트 줄 */
+.glass-panel, .fm-panel, .locker-panel {
+  background: linear-gradient(180deg, rgba(19,31,51,0.96), rgba(13,21,36,0.96)) !important;
+  border: 1px solid var(--ui-line) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  backdrop-filter: none;
+}
+.glass-panel[class*="border-t-"], .fm-panel { border-top: 2px solid var(--ui-mint) !important; }
+.glass-panel.border-t-blue-500 { border-top-color: var(--ui-sky) !important; }
+.glass-panel.border-t-amber-500, .glass-panel.border-t-fut-gold { border-top-color: var(--ui-gold) !important; }
+.locker-panel { border-top: 2px solid var(--ui-gold) !important; }
+.fm-panel-title { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: 0.02em; display: flex; align-items: center; gap: 8px; }
+.fm-panel-title::before { content: ''; width: 4px; height: 16px; border-radius: 2px; background: var(--ui-mint); }
+.fm-section-title { font-size: 12px; font-weight: 800; color: var(--ui-text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.fm-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 8px; background: rgba(0,0,0,0.35); border: 1px solid var(--ui-line-2); }
+
+/* 상단 바·하단 탭 */
+#mainUI > nav { background: rgba(7,12,22,0.94) !important; border-bottom: 1px solid var(--ui-line) !important; box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+#subHubNav { background: rgba(9,15,27,0.9) !important; border-top: 1px solid var(--ui-line) !important; }
+#appBottomNav { background: rgba(6,10,18,0.96) !important; border-top: 1px solid var(--ui-line) !important; box-shadow: 0 -8px 24px rgba(0,0,0,0.45); }
+.app-tab { color: #6b7a93; position: relative; }
+.app-tab.active { color: var(--ui-mint); text-shadow: none; }
+.app-tab.active::before { content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--ui-mint); box-shadow: 0 0 12px rgba(46,230,166,0.7); }
+.subhub-chip { background: rgba(15,24,40,0.9); border-color: var(--ui-line-2); color: #c7d2e3; }
+.subhub-chip.active { background: linear-gradient(180deg, rgba(46,230,166,0.22), rgba(46,230,166,0.08)); border-color: rgba(46,230,166,0.6); color: #d1fae5; }
+
+/* ── 선수 카드 (FC 온라인 FUT 카드, 작게) ── */
+.player-hub { padding-bottom: 14px; }
+.fut-compact {
+  position: relative; width: 100%; aspect-ratio: 0.68; display: flex; flex-direction: column;
+  padding: 9% 8% 7%; overflow: hidden; isolation: isolate;
+  clip-path: polygon(50% 0, 88% 3%, 100% 10%, 100% 86%, 92% 93%, 50% 100%, 8% 93%, 0 86%, 0 10%, 12% 3%);
+}
+.fut-compact::after { clip-path: inherit; }
+.fut-compact:hover { transform: none; }
+.fut-compact::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 30%, rgba(255,255,255,0.35), transparent 60%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 9px);
+  mix-blend-mode: overlay;
+}
+.fut-compact-top { display: flex; flex: 1; min-height: 0; position: relative; }
+.fut-compact-meta { display: flex; flex-direction: column; align-items: center; width: 34%; z-index: 2; gap: 2px; }
+.fut-compact-ovr { font-size: clamp(30px, 10.5vw, 44px); line-height: 0.82; text-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+.fut-compact-pos { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; min-height: 26px; padding: 0 2px; background: transparent; border: 0; color: inherit; }
+.fut-compact-pos i { font-size: 8px; opacity: 0.7; }
+.fut-compact-flag { width: 20px; border-radius: 2px; margin-top: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+.fut-compact-crest { font-size: 16px; opacity: 0.75; margin-top: 4px; }
+.fut-compact-portrait { position: absolute; right: -4%; bottom: 0; width: 76%; height: 100%; display: flex; align-items: flex-end; justify-content: center; z-index: 1; }
+.fut-compact-portrait .manga-face { width: 100% !important; height: 100% !important; border: 0 !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+.fut-compact-portrait .manga-face-img, .locker-card-face .manga-face-img { transform: none !important;
+  -webkit-mask-image: radial-gradient(ellipse 62% 70% at 55% 42%, #000 58%, transparent 100%); mask-image: radial-gradient(ellipse 62% 70% at 55% 42%, #000 58%, transparent 100%); }
+.fut-compact-portrait .manga-face-img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; }
+.fut-compact-name { text-align: center; font-weight: 900; font-size: clamp(13px, 4.2vw, 17px); line-height: 1.1; padding: 5px 0 4px; border-top: 1px solid currentColor; border-bottom: 1px solid currentColor; border-color: rgba(0,0,0,0.18); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fut-compact-face { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px 4px; padding-top: 4px; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; }
+.fut-compact-face span { display: flex; align-items: baseline; justify-content: center; gap: 3px; opacity: 0.92; }
+.fut-compact-face b { font-family: var(--font-num); font-size: 15px; font-weight: 400; line-height: 1; }
+#detailFutCard .item-slot-row { gap: 2px; }
+
+/* 티어 카드 색 (FUT 동·은·금·특수) */
+.fut-compact.card-rookie { background: linear-gradient(160deg, #f6dcb6 0%, #d3a06a 35%, #a76a32 70%, #6e4019 100%); color: #3b2410; }
+.fut-compact.card-semipro { background: linear-gradient(160deg, #ffffff 0%, #dfe5ee 35%, #a8b3c4 70%, #6c788c 100%); color: #1e293b; }
+.fut-compact.card-pro { background: linear-gradient(160deg, #fff6c9 0%, #f3d36b 33%, #d6a52a 66%, #8f6a10 100%); color: #3a2a05; }
+.fut-compact.card-worldclass { background: linear-gradient(160deg, #1b1240 0%, #3b1f8a 40%, #7c3aed 75%, #c4b5fd 100%); color: #f5f3ff; }
+.fut-compact.card-challenger { background: linear-gradient(160deg, #04150f 0%, #0b3b2c 40%, #10b981 80%, #a7f3d0 100%); color: #ecfdf5; }
+.fut-compact.card-worldclass .fut-compact-name, .fut-compact.card-challenger .fut-compact-name { border-color: rgba(255,255,255,0.25); }
+
+/* FM 정보 줄·기록 */
+.fm-info-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 5px 8px; border-radius: 8px; background: rgba(0,0,0,0.25); border: 1px solid var(--ui-line); }
+.fm-info-row span { color: var(--ui-text-dim); font-weight: 700; }
+.fm-info-row b { color: #fff; font-weight: 800; }
+.fm-bar { height: 8px; border-radius: 99px; background: rgba(0,0,0,0.45); border: 1px solid var(--ui-line); overflow: hidden; }
+.fm-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #0ea5e9, var(--ui-mint)); box-shadow: 0 0 10px rgba(46,230,166,0.6); }
+.fm-rec { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; border-radius: 8px; background: rgba(0,0,0,0.28); border: 1px solid var(--ui-line); min-height: 42px; }
+.fm-rec span { font-size: 10px; color: var(--ui-text-dim); font-weight: 700; line-height: 1.1; }
+.fm-rec b { font-family: var(--font-num); font-weight: 400; font-size: 20px; line-height: 1; color: #fff; }
+.fm-rec b.text-emerald-300 { color: #6ee7b7; } .fm-rec b.text-fut-gold { color: var(--ui-gold); }
+
+/* FM 능력치 표 */
+.fm-attr-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+.fm-attr {
+  display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 34px; padding: 0 8px;
+  background: rgba(0,0,0,0.28); border: 1px solid var(--ui-line); border-left: 3px solid transparent; border-radius: 6px;
+  font-size: 12.5px; font-weight: 700; color: #cbd5e1; text-align: left;
+}
+.fm-attr:active { background: rgba(255,255,255,0.06); }
+.fm-attr-core { border-left-color: #f87171; }
+.fm-attr-sub { border-left-color: #fbbf24; }
+.fm-attr-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; background: none; border: 0; color: inherit; font: inherit; padding: 0; text-align: left; }
+.fm-val { font-family: var(--font-num); font-size: 19px; line-height: 1; min-width: 1.6em; text-align: right; }
+.fm-v-1 { color: #f87171; } .fm-v-2 { color: #fbbf24; } .fm-v-3 { color: #86efac; } .fm-v-4 { color: #38bdf8; }
+.fm-v-5 { color: #fde047; text-shadow: 0 0 8px rgba(253,224,71,0.6); }
+.fm-key { display: inline-block; width: 3px; height: 10px; vertical-align: -1px; margin-right: 3px; border-radius: 1px; }
+.fm-key-core { background: #f87171; } .fm-key-sub { background: #fbbf24; }
+.fm-attr-grid-gm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fm-attr-grid-gm .fm-attr { padding: 0 4px 0 8px; min-height: 40px; }
+.fm-attr-grid-gm .fm-attr-label { flex: 1; }
+.fm-step { width: 30px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.06); border: 1px solid var(--ui-line-2); color: #e2e8f0; font-size: 11px; flex-shrink: 0; }
+.fm-step:active { background: rgba(46,230,166,0.25); }
+
+
+/* ── 라커룸 작은 카드 (FUT 미니) ── */
+.locker-card {
+  position: relative; display: flex; flex-direction: column; cursor: pointer; overflow: hidden; isolation: isolate;
+  aspect-ratio: 0.72; border-radius: 10px; padding: 6px 6px 5px;
+  clip-path: polygon(50% 0, 90% 3%, 100% 9%, 100% 88%, 92% 95%, 50% 100%, 8% 95%, 0 88%, 0 9%, 10% 3%);
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.locker-card::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 90% 55% at 50% 25%, rgba(255,255,255,0.3), transparent 60%), repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 8px); mix-blend-mode: overlay; }
+.locker-card:active { transform: scale(0.97); }
+@media (hover: hover) { .locker-card:hover { transform: translateY(-3px); } }
+.locker-card.card-rookie { background: linear-gradient(160deg, #f6dcb6, #c38b52 45%, #7a4a1f); color: #3b2410; }
+.locker-card.card-semipro { background: linear-gradient(160deg, #ffffff, #c9d2df 45%, #7d899c); color: #1e293b; }
+.locker-card.card-pro { background: linear-gradient(160deg, #fff6c9, #e9c04f 45%, #a67c12); color: #3a2a05; }
+.locker-card.card-worldclass { background: linear-gradient(160deg, #1b1240, #4c1d95 50%, #8b5cf6); color: #f5f3ff; }
+.locker-card.card-challenger { background: linear-gradient(160deg, #04150f, #065f46 50%, #10b981); color: #ecfdf5; }
+.locker-card.checked-out { filter: grayscale(0.55) brightness(0.62); }
+.locker-card.selected { outline: none; filter: drop-shadow(0 0 0 #fff); }
+.locker-card-wrap { position: relative; }
+.locker-card-wrap.selected::after { content: ''; position: absolute; inset: -3px; border-radius: 12px; border: 2px solid var(--ui-mint); box-shadow: 0 0 14px rgba(46,230,166,0.6); pointer-events: none; }
+.locker-card-head { display: flex; align-items: flex-start; justify-content: space-between; position: relative; z-index: 2; }
+.locker-card-ovr { font-family: var(--font-num); font-size: 24px; line-height: 0.85; }
+.locker-card-pos { font-size: 9px; font-weight: 900; letter-spacing: 0.04em; display: block; margin-top: 1px; }
+.locker-card-face { position: absolute; left: 14%; right: -2%; top: 8%; bottom: 24%; z-index: 1; display: flex; align-items: flex-end; justify-content: center; }
+.locker-card-face .manga-face { width: 100% !important; height: 100% !important; border: 0 !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+.locker-card-face .manga-face-img { width: 100%; height: 100%; object-fit: cover; object-position: center 15%; }
+.locker-card-name { margin-top: auto; position: relative; z-index: 2; text-align: center; font-size: 12px; font-weight: 900; line-height: 1.15; padding-top: 3px; border-top: 1px solid rgba(0,0,0,0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.locker-card-team { position: relative; z-index: 2; text-align: center; font-size: 9px; font-weight: 900; line-height: 1.1; }
+.locker-card .locker-checkbox { position: absolute; top: 4px; right: 4px; left: auto; width: 26px !important; height: 26px !important; z-index: 5; border-radius: 8px; border-width: 2px; background-color: rgba(0,0,0,0.45); border-color: rgba(255,255,255,0.55); }
+.locker-card .locker-checkbox:checked { background-color: var(--ui-mint); border-color: #fff; }
+.locker-card .locker-checkbox:checked::after { font-size: 14px; color: #052e1f; }
+
+/* 큰 페이지 제목: FM처럼 담백하게 (아이콘만 포인트 색) */
+.glass-panel > h3.font-display, .glass-panel > .relative > h3.font-display, .glass-panel > div > h3.font-display,
+.glass-panel > h2.font-display, .glass-panel > div > h2.font-display {
+  font-size: 19px !important; line-height: 1.3 !important; color: #fff !important;
+  -webkit-text-stroke: 0 !important; filter: none !important; text-shadow: none !important; letter-spacing: 0.01em;
+}
+.glass-panel > h3.font-display i, .glass-panel > div > h3.font-display i, .glass-panel > .relative > h3.font-display i { font-size: 17px; }
+
+/* 선수 카드: 이전/다음 */
+.card-nav-btn { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid var(--ui-line-2); color: #e2e8f0; font-size: 13px; }
+.card-nav-btn:active { background: rgba(46,230,166,0.25); }
+@keyframes cardSlideL { from { transform: translateX(24px); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@keyframes cardSlideR { from { transform: translateX(-24px); opacity: 0.2; } to { transform: none; opacity: 1; } }
+.card-slide-l { animation: cardSlideL 0.22s ease-out; }
+.card-slide-r { animation: cardSlideR 0.22s ease-out; }
+/* 포지션별 OVR */
+.pos-rec { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; border-radius: 8px; background: rgba(0,0,0,0.28); border: 1px solid var(--ui-line); font-size: 10px; font-weight: 800; color: var(--ui-text-dim); position: relative; }
+.pos-rec b { font-family: var(--font-num); font-weight: 400; font-size: 20px; line-height: 1; color: #fff; }
+.pos-rec.is-best { border-color: var(--ui-mint); background: rgba(46,230,166,0.12); color: #a7f3d0; }
+.pos-rec.is-best::after { content: '추천'; position: absolute; top: -7px; right: 3px; font-size: 9px; padding: 0 4px; border-radius: 4px; background: var(--ui-mint); color: #052e1f; }
+.pos-rec.is-current { box-shadow: inset 0 -3px 0 var(--ui-gold); }
+#detailRecords .fm-rec { min-height: 38px; padding: 3px 1px; }
+#detailRecords .fm-rec b { font-size: 17px; }
+#detailRecords .fm-rec span { font-size: 9.5px; }
+
+/* 휴대폰 한 화면에 맞추기 (카드 화면) */
+#playerHub .fm-attr { min-height: 30px; }
+#playerHub .fm-val { font-size: 17px; }
+#playerHub .fm-attr-grid { gap: 2px; }
+#playerHub .fm-attr-grid-gm .fm-attr { min-height: 34px; }
+#playerHub .fm-attr-grid-gm .fm-step { height: 28px; width: 28px; }
+#playerHub .pos-rec { min-height: 40px; }
+#playerHub .pos-rec b { font-size: 18px; }
+
+/* 두 칸 고르기 (세로/가로, 도구) */
+.seg { display: inline-flex; border: 1px solid var(--ui-line-2); border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.3); }
+.seg button { min-height: 36px; padding: 0 10px; font-size: 12px; font-weight: 800; color: #cbd5e1; display: inline-flex; align-items: center; gap: 4px; }
+.seg button + button { border-left: 1px solid var(--ui-line-2); }
+.seg button.is-on { background: var(--ui-mint); color: #052e1f; }
+/* 전술판 */
+.tac-step { flex-shrink: 0; min-width: 40px; min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--ui-line-2); background: rgba(15,24,40,0.9); color: #e2e8f0; font-weight: 900; font-family: var(--font-num); font-size: 18px; }
+.tac-step.is-on { background: var(--ui-gold); color: #3a2a05; border-color: #fff3c4; }
+.tac-step-add { font-family: var(--font-body); font-size: 12px; color: #a7f3d0; border-style: dashed; border-color: rgba(46,230,166,0.6); }
+.tac-btn { min-height: 44px; border-radius: 10px; border: 1px solid var(--ui-line-2); background: rgba(15,24,40,0.9); color: #e2e8f0; font-size: 12px; font-weight: 800; }
+.tac-btn:disabled { opacity: 0.4; }
+.tac-btn.is-on { background: rgba(46,230,166,0.2); border-color: var(--ui-mint); }
+.tac-btn-main { background: linear-gradient(180deg, #f2c35b, #c98e1e); color: #2a1d02; border-color: #fde68a; font-size: 14px; }
+.tac-wrap.tac-full { position: fixed; inset: 0; z-index: 7000; background: #050a12; padding: 10px 8px calc(env(safe-area-inset-bottom) + 8px); overflow-y: auto; }
+
+/* ───── 배드민턴 모의경기 중계 줄 ───── */
+.sim-log-row { font-size: 12px; line-height: 1.45; color: #e2e8f0; padding: 4px 8px; border-radius: 8px; background: rgba(15, 23, 42, 0.55); word-break: keep-all; }
+.sim-log-row.sim-log-head { background: rgba(120, 53, 15, 0.25); border: 1px solid rgba(217, 119, 6, 0.25); }
+.sim-log-row.sim-log-note { background: rgba(8, 47, 73, 0.6); border: 1px solid rgba(14, 165, 233, 0.35); color: #e0f2fe; }
+.sim-log-score { display: inline-block; min-width: 2.8em; text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: #fde047; background: rgba(0, 0, 0, 0.45); border-radius: 6px; margin-right: 4px; }
+#simNoteBar.note-pop { animation: notePop 0.6s ease; }
+@keyframes notePop { 0% { background: rgba(14, 165, 233, 0.55); } 100% { background: rgba(8, 47, 73, 0.7); } }

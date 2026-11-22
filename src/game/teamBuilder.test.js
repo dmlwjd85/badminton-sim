@@ -1,0 +1,135 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { buildTeams, measureTeams, pickLineup } from './teamBuilder.js';
+
+// 재현 가능한 난수
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32; };
+}
+
+const POS = ['Rear', 'All', 'Front', 'Front', 'Single', 'Front', 'All', '미정'];
+function roster(n, seed = 7) {
+  const r = seeded(seed);
+  return Array.from({ length: n }, (_, i) => ({ id: 'p' + i, pos: POS[i % POS.length], ovr: 55 + Math.floor(r() * 30) }));
+}
+const ovrOf = (p) => p.ovr;
+
+for (const mode of ['position', 'ability', 'balanced', 'random']) {
+  test(`${mode}: 모든 출석자가 정확히 한 팀에 들어가고 인원은 ±1`, () => {
+    for (const [n, k] of [[10, 2], [17, 3], [31, 6], [12, 4], [7, 2]]) {
+      const players = roster(n, n * 3 + k);
+      const { teams } = buildTeams(players, k, mode, { ovrOf, rng: seeded(n + k) });
+      assert.equal(teams.length, k);
+      const ids = teams.flat().map((p) => p.id).sort();
+      assert.deepEqual(ids, players.map((p) => p.id).sort());
+      const sizes = teams.map((t) => t.length);
+      assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, `${n}명 ${k}팀 인원 ${sizes}`);
+    }
+  });
+}
+
+test('포지션 우선: 포지션별 인원 차이가 팀마다 1 이하, 후위가 팀마다 있음', () => {
+  const players = roster(20, 3); // 후위 3명, 2팀
+  const { teams, metrics } = buildTeams(players, 2, 'position', { ovrOf, rng: seeded(1) });
+  metrics.summaries.forEach((s) => assert.ok(s.counts.Rear >= 1));
+  for (const k of ['Single', 'All', 'Front', 'Rear', '미정']) {
+    const c = teams.map((t) => t.filter((p) => p.pos === k).length);
+    assert.ok(Math.max(...c) - Math.min(...c) <= 1, `${k} ${c}`);
+  }
+});
+
+test('능력치 우선은 OVR 차이가 포지션 우선보다 크지 않다', () => {
+  const players = roster(18, 11);
+  const a = buildTeams(players, 3, 'ability', { ovrOf, rng: seeded(2) }).metrics;
+  const p = buildTeams(players, 3, 'position', { ovrOf, rng: seeded(2) }).metrics;
+  assert.ok(a.ovrSpread <= p.ovrSpread + 1e-9, `ability ${a.ovrSpread} position ${p.ovrSpread}`);
+  assert.ok(a.ovrSpread < 1.5, `ability spread ${a.ovrSpread}`);
+});
+
+test('밸런스형: 후위가 팀 수만큼 있으면 후위 없는 팀이 없다', () => {
+  const players = roster(24, 5); // 후위 3명
+  const { metrics } = buildTeams(players, 3, 'balanced', { ovrOf, rng: seeded(9) });
+  assert.equal(metrics.missingGk, 0);
+  assert.ok(metrics.ovrSpread < 3);
+});
+
+test('출석 인원이 팀 수보다 적으면 인원 수만큼만 팀을 만든다', () => {
+  const { teams } = buildTeams(roster(3), 6, 'balanced', { ovrOf, rng: seeded(4) });
+  assert.equal(teams.length, 3);
+});
+
+test('출전 명단: 복식1은 후위+전위 짝, 단식은 남은 선수 중 단식 최고, 복식2는 그다음 짝', () => {
+  const squad = [
+    { id: 'r1', pos: 'Rear', ovr: 80 }, { id: 'f1', pos: 'Front', ovr: 75 }, { id: 's', pos: 'Single', ovr: 70 },
+    { id: 'r2', pos: 'Rear', ovr: 65 }, { id: 'f2', pos: 'Front', ovr: 60 }, { id: 'x', pos: '미정', ovr: 50 },
+  ];
+  const fit = (p, slot) => p.ovr + (p.pos === slot ? 5 : 0);
+  const { doubles1, single, doubles2, bench } = pickLineup(squad, fit);
+  assert.deepEqual(doubles1.map((p) => p.id), ['r1', 'f1']);
+  assert.equal(single.id, 's');
+  assert.deepEqual(doubles2.map((p) => p.id), ['r2', 'f2']);
+  assert.deepEqual(bench.map((p) => p.id), ['x']);
+});
+
+test('사람이 3명뿐이면 복식2는 겹쳐서 짠다', () => {
+  const squad = [{ id: 'a', pos: 'Rear', ovr: 70 }, { id: 'b', pos: 'Front', ovr: 60 }, { id: 'c', pos: 'Single', ovr: 65 }];
+  const { doubles1, single, doubles2 } = pickLineup(squad, (p) => p.ovr);
+  assert.equal(doubles1.length, 2);
+  assert.ok(single);
+  assert.equal(doubles2.length, 2);
+  assert.notEqual(doubles2[0].id, doubles2[1].id);
+});
+
+test('measureTeams 계산', () => {
+  const m = measureTeams([[{ pos: 'Front', ovr: 60 }], [{ pos: 'Front', ovr: 70 }]], ovrOf);
+  assert.equal(m.ovrSpread, 10);
+  assert.equal(m.posSpread, 0);
+});
+
+test('피할 수 없는 포지션 차이는 쏠림으로 세지 않는다', () => {
+  const m = measureTeams([[{ pos: 'Single', ovr: 60 }, { pos: 'Front', ovr: 60 }], [{ pos: 'Front', ovr: 60 }, { pos: 'Front', ovr: 60 }]], ovrOf);
+  assert.equal(m.posExcess, 0);
+  const bad = measureTeams([[{ pos: 'Front', ovr: 60 }, { pos: 'Front', ovr: 60 }], [{ pos: 'All', ovr: 60 }, { pos: 'All', ovr: 60 }]], ovrOf);
+  assert.equal(bad.posExcess, 4);
+});
+
+test('포지션 우선은 쓸데없는 쏠림이 없다', () => {
+  const players = roster(16, 21);
+  const { metrics } = buildTeams(players, 3, 'position', { ovrOf, rng: seeded(3) });
+  assert.equal(metrics.posExcess, 0);
+});
+
+test('완전 랜덤: 누를 때마다 조합이 달라진다', () => {
+  const players = roster(16, 2);
+  const a = buildTeams(players, 2, 'random', { ovrOf, rng: seeded(1) }).teams.map((t) => t.map((p) => p.id).sort().join());
+  const b = buildTeams(players, 2, 'random', { ovrOf, rng: seeded(99) }).teams.map((t) => t.map((p) => p.id).sort().join());
+  assert.notDeepEqual(a, b);
+});
+
+for (const mode of ['position', 'ability', 'balanced', 'random']) {
+  test(`${mode}: 고정한 선수는 정한 팀에 그대로, 나머지로 인원 ±1`, () => {
+    const players = roster(15, 8);
+    const fixed = new Map([['p0', 0], ['p1', 0], ['p2', 0], ['p3', 1], ['p4', 2]]);
+    const { teams, fixedIds } = buildTeams(players, 3, mode, { ovrOf, rng: seeded(5), fixed });
+    assert.equal(fixedIds.size, 5);
+    fixed.forEach((ti, id) => assert.ok(teams[ti].some((p) => p.id === id), `${id} → ${ti}`));
+    const sizes = teams.map((t) => t.length);
+    assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, `${sizes}`);
+    assert.equal(teams.flat().length, 15);
+  });
+}
+
+test('고정 선수가 팀 수보다 뒤 팀에 있으면 그 팀까지 만든다', () => {
+  const players = roster(9, 4);
+  const { teams } = buildTeams(players, 2, 'balanced', { ovrOf, rng: seeded(2), fixed: new Map([['p0', 2]]) });
+  assert.equal(teams.length, 3);
+  assert.ok(teams[2].some((p) => p.id === 'p0'));
+});
+
+test('고정 인원이 한쪽에 몰려 있어도 나머지를 적은 팀에 먼저 채운다', () => {
+  const players = roster(10, 6);
+  const fixed = new Map([['p0', 0], ['p1', 0], ['p2', 0], ['p3', 0]]);
+  const { teams } = buildTeams(players, 2, 'ability', { ovrOf, rng: seeded(3), fixed });
+  assert.deepEqual(teams.map((t) => t.length), [5, 5]);
+});
