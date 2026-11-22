@@ -866,3 +866,4 @@ body, #root {
 .sim-log-score { display: inline-block; min-width: 2.8em; text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: #fde047; background: rgba(0, 0, 0, 0.45); border-radius: 6px; margin-right: 4px; }
 #simNoteBar.note-pop { animation: notePop 0.6s ease; }
 @keyframes notePop { 0% { background: rgba(14, 165, 233, 0.55); } 100% { background: rgba(8, 47, 73, 0.7); } }
+.sim-hl { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 999px; border: 1px solid; background: rgba(0, 0, 0, 0.35); }

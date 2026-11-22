@@ -197,7 +197,7 @@ export class LiveCourt {
     if (bar && text) { bar.classList.remove('note-pop'); void bar.offsetWidth; bar.classList.add('note-pop'); }
   }
 
-  showFx(text, color) { this.fx = { text, color, t0: performance.now(), dur: Math.max(500, 1300 * Math.max(0.45, this.timeScale)) }; }
+  showFx(text, color, sub, long) { this.fx = { text, color, sub, t0: performance.now(), dur: Math.max(600, (long ? 2000 : 1300) * Math.max(0.45, this.timeScale)) }; }
 
   /* ───── 시간 ───── */
   start() {
@@ -309,12 +309,27 @@ export class LiveCourt {
         ctx.globalAlpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
         ctx.translate(W / 2, H / 2);
         ctx.scale(s, s);
-        ctx.font = `900 ${Math.round(Math.min(W, H) * 0.15)}px ${fontStack('num')}`;
+        // 긴 영어 이름도 코트 폭 안에 들어가게
+        let fs = Math.round(Math.min(W, H) * 0.15);
+        ctx.font = `900 ${fs}px ${fontStack('num')}`;
+        const tw = ctx.measureText(this.fx.text).width;
+        if (tw > W * 0.9) { fs = Math.floor(fs * (W * 0.9) / tw); ctx.font = `900 ${fs}px ${fontStack('num')}`; }
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.75)';
         ctx.strokeText(this.fx.text, 0, 0);
         ctx.fillStyle = this.fx.color;
         ctx.fillText(this.fx.text, 0, 0);
+        if (this.fx.sub) {
+          const ss = Math.max(12, Math.round(fs * 0.42));
+          ctx.font = `900 ${ss}px ${fontStack('body')}`;
+          const sw = ctx.measureText(this.fx.sub).width + 16;
+          ctx.fillStyle = 'rgba(0,0,0,0.7)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(-sw / 2, fs * 0.62, sw, ss + 10, 6); else ctx.rect(-sw / 2, fs * 0.62, sw, ss + 10);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(this.fx.sub, 0, fs * 0.62 + (ss + 10) / 2);
+        }
         ctx.restore();
       }
     }
