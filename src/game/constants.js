@@ -4,10 +4,8 @@
 // Vite 빌드 시 .env의 VITE_APP_ID 사용, 없으면 기본값 (기존 단일 HTML과 동일)
 export const appId = (import.meta.env && import.meta.env.VITE_APP_ID) || (typeof globalThis.__app_id !== 'undefined' ? globalThis.__app_id : 'sambong-badminton');
 
-export const INITIAL_PLAYERS = [
-'김단엘', '김다래', '김라희', '김민지', '김사랑비', '김지훈', '노승희', '박소담', '박소윤', '박준수', '박하율', '박현수', '백시율', 
-'석서영', '이가온', '이동해', '이시형', '이예주', '이준용', '이지안', '인시진', '임은영', '정의영', '정의정', '조이담', '최윤희', '함인솔', '황주하', '황훈태', '황혜민', '황혜윤'
-];
+/** 처음 명단은 비워 둬요. 마스터J가 '신규 선수 등록'으로 한 명씩 넣어요 */
+export const INITIAL_PLAYERS = [];
 
 export let ALLOWED_PLAYERS = [...INITIAL_PLAYERS];
 
@@ -17,10 +15,7 @@ if(name === 'gm1' || name === 'gm2') return name;
 return String(name).replace(/[^가-힣a-zA-Z0-9]/g, ''); 
 };
 
-export const GENDER_MAP = {
-'김단엘': 'M', '김다래': 'F', '김라희': 'F', '김민지': 'F', '김사랑비': 'F', '김지훈': 'M', '노승희': 'F', '박소담': 'M', '박소윤': 'F', '박준수': 'M', '박하율': 'F', '박현수': 'M', '백시율': 'M', 
-'석서영': 'F', '이가온': 'F', '이동해': 'M', '이시형': 'M', '이예주': 'F', '이준용': 'M', '이지안': 'F', '인시진': 'M', '임은영': 'F', '정의영': 'M', '정의정': 'M', '조이담': 'M', '최윤희': 'F', '함인솔': 'F', '황주하': 'M', '황훈태': 'M', '황혜민': 'F', '황혜윤': 'F'
-};
+export const GENDER_MAP = {};
 
 export const POS_KR = { 'Front': '전위 (네트)', 'Rear': '후위 (공격)', 'All': '올라운더', 'Single': '단식 전문', '미정': '포지션 미정' };
 export const STAT_NAMES = { pac:'풋워크 (FTW)', sho:'스매시 (SMA)', pas:'클리어 (CLR)', dri:'드롭·헤어핀 (DRP)', def:'수비 리시브 (DEF)', phy:'체력 (STA)', ref:'반응 속도 (REF)', int:'네트 플레이 (NET)', pst:'위치 선정 (POS)', dis:'서브 (SRV)', cmp:'평정심 (CMP)', wrk:'드라이브 (DRV)' };
