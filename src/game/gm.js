@@ -439,7 +439,7 @@ if (cleanupAsked || !window.playerState || !window.playerState.isGM) return;
 cleanupAsked = true;
 try {
 checkAuthReady();
-const flagRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'rosterCleanup_v1');
+const flagRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'rosterCleanup_v2');
 const flag = await getDoc(flagRef);
 if (flag.exists() && flag.data().done) return;
 const keep = new Set([...INITIAL_PLAYERS.map((n) => getSafeDocId(n)), 'gm1', 'gm2']);
