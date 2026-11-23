@@ -5,10 +5,14 @@ const HOLD_MS = 2000;
 const LEAVE_MS = 120;
 
 export const MANGA_SCENES = {
-  'bd-smashBomb': { src: 'manga/bd-smashbomb.webp', sfx: '스매시!!', tone: 'fire' },
-  'bd-combo': { src: 'manga/bd-combo.webp', sfx: '찰떡 콤보!', tone: 'gold' },
-  'bd-barrage': { src: 'manga/bd-barrage.webp', sfx: '연타 폭격!', tone: 'fire' },
-  'bd-counter': { src: 'manga/bd-counter.webp', sfx: '카운터!!', tone: 'ice' },
+  'bd-smash-m': { src: 'manga/bd-smash-m.webp', sfx: '스매시!!', tone: 'fire' },
+  'bd-smash-f': { src: 'manga/bd-smash-f.webp', sfx: '스매시!!', tone: 'fire' },
+  'bd-combo-m': { src: 'manga/bd-combo-m.webp', sfx: '찰떡 콤보!', tone: 'gold' },
+  'bd-combo-f': { src: 'manga/bd-combo-f.webp', sfx: '찰떡 콤보!', tone: 'gold' },
+  'bd-barrage-m': { src: 'manga/bd-barrage-m.webp', sfx: '연타 폭격!', tone: 'fire' },
+  'bd-barrage-f': { src: 'manga/bd-barrage-f.webp', sfx: '연타 폭격!', tone: 'fire' },
+  'bd-counter-m': { src: 'manga/bd-counter-m.webp', sfx: '카운터!!', tone: 'ice' },
+  'bd-counter-f': { src: 'manga/bd-counter-f.webp', sfx: '카운터!!', tone: 'ice' },
 };
 
 export const BD_PRELOAD_IDS = Object.keys(MANGA_SCENES);
@@ -39,9 +43,12 @@ export function shouldSkipMangaCutIn({ timeScale, reducedMotion } = {}) {
   return false;
 }
 
-export function pickBdMangaScene(key) {
-  const map = { smashBomb: 'bd-smashBomb', combo: 'bd-combo', barrage: 'bd-barrage', counter: 'bd-counter' };
-  return map[key] || null;
+export function pickBdMangaScene(key, gender) {
+  const map = { smashBomb: 'smash', combo: 'combo', barrage: 'barrage', counter: 'counter' };
+  const scene = map[key];
+  if (!scene) return null;
+  const g = gender === 'F' ? 'f' : 'm';
+  return `bd-${scene}-${g}`;
 }
 
 let current = null;

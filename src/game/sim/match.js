@@ -120,7 +120,7 @@ window.runSimMatch = async () => {
     if (h.player) { if (h.blunder) ps(h.player, h.side).blunder++; else ps(h.player, h.side).hl++; }
     hlLog.push({ key: h.key, side: h.side, name: h.player ? h.player.name : '', blunder: !!h.blunder });
     if (final && !h.blunder && BIG.has(h.key) && ts > 0) { try { confetti({ particleCount: 70, spread: 70, origin: { y: 0.45 }, zIndex: 9999, disableForReducedMotion: true, colors: [H.color, '#ffffff', '#fde047'] }); } catch (e) { /* 무시 */ } }
-    const mangaId = !h.blunder ? pickBdMangaScene(h.key) : null;
+    const mangaId = !h.blunder ? pickBdMangaScene(h.key, h.player ? genderOf(h.player) : 'M') : null;
     if (mangaId) await showMangaCutIn(mangaId, { timeScale: ts });
     else await court.wait(final ? 1100 : 650);
   };
