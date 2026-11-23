@@ -13,7 +13,7 @@ import { simSlotTeam, simSlotName, countSimTeam, getSimLineup, genderOf } from '
 import { getStat } from '../stats.js';
 import { escapeHtml, sleep } from '../utils.js';
 import { josa } from './josa.js';
-import { pickBdMangaScene, preloadMangaCutIns, showMangaCutIn } from './mangaCutIn.js';
+import { BONUS_SMASH_P, MANGA_PER_MATCH_CAP, pickBdMangaScene, preloadMangaCutIns, shouldBonusSmashCutIn, showMangaCutIn } from './mangaCutIn.js';
 
 const FORMATS = {
   '1x15': { games: 1, target: 15, cap: 21, label: '15점 1게임' },
@@ -113,6 +113,7 @@ window.runSimMatch = async () => {
   const ps = (p, side) => { if (!pstat[p.id]) pstat[p.id] = { p, side, win: 0, err: 0, smash: 0, kill: 0, def: 0, hl: 0, blunder: 0, bot: String(p.id).startsWith('__sim_bot') }; return pstat[p.id]; };
   const hlLog = []; // { key, side, name }
   const BIG = new Set(['combo', 'barrage', 'ironWall', 'marathon', 'counter', 'lineSnipe']);
+  let mangaLeft = MANGA_PER_MATCH_CAP;
   const showHl = async (h, final) => {
     const H = HIGHLIGHTS[h.key];
     court.showFx(H.en, H.color, `${H.icon} ${H.name}${h.player ? ` · ${h.player.name}` : ''}`, true);
@@ -121,8 +122,20 @@ window.runSimMatch = async () => {
     hlLog.push({ key: h.key, side: h.side, name: h.player ? h.player.name : '', blunder: !!h.blunder });
     if (final && !h.blunder && BIG.has(h.key) && ts > 0) { try { confetti({ particleCount: 70, spread: 70, origin: { y: 0.45 }, zIndex: 9999, disableForReducedMotion: true, colors: [H.color, '#ffffff', '#fde047'] }); } catch (e) { /* 무시 */ } }
     const mangaId = !h.blunder ? pickBdMangaScene(h.key, h.player ? genderOf(h.player) : 'M') : null;
-    if (mangaId) await showMangaCutIn(mangaId, { timeScale: ts });
-    else await court.wait(final ? 1100 : 650);
+    if (mangaId && mangaLeft > 0) {
+      mangaLeft -= 1;
+      await showMangaCutIn(mangaId, { timeScale: ts });
+    } else await court.wait(final ? 1100 : 650);
+  };
+  const playBonusSmashManga = async (r) => {
+    const last = r.shots[r.shots.length - 1];
+    const already = (r.__hls || []).some((h) => !h.blunder && pickBdMangaScene(h.key, h.player ? genderOf(h.player) : 'M'));
+    if (!shouldBonusSmashCutIn({ reason: r.reason, lastType: last && last.type, alreadyManga: already, remaining: mangaLeft })) return;
+    if (Math.random() >= BONUS_SMASH_P) return;
+    const id = pickBdMangaScene('smashBomb', last.hitter ? genderOf(last.hitter) : 'M');
+    if (!id) return;
+    mangaLeft -= 1;
+    await showMangaCutIn(id, { timeScale: ts });
   };
   const eff = (p, k) => getStat(p, k) * (0.86 + 0.14 * ((stamina[p.id] ?? 100) / 100));
   const log = (html, cls = '') => {
@@ -239,6 +252,7 @@ window.runSimMatch = async () => {
           const near = Math.max(st.score.A, st.score.B) >= fmt.target - 2;
           const r = simulateRally({ st, eff, tactics, pressure: near ? 0.8 : 0 });
           const hls = rallyHighlights(r, doubles, eff);
+          r.__hls = hls;
           const finals = hls.filter((h) => h.final);
           const first = r.shots[0];
           Object.entries(first.pos).forEach(([id, v]) => { const pl = court.players.get(id); if (pl) court.place(id, pl.side, v.d, v.y, ts === 0); });
@@ -259,6 +273,7 @@ window.runSimMatch = async () => {
             stamina[sh.hitter.id] = Math.max(35, (stamina[sh.hitter.id] ?? 100) - (0.5 + (99 - getStat(sh.hitter, 'phy')) / 160));
           }
           for (const h of finals.slice(0, 2)) await showHl(h, true);
+          await playBonusSmashManga(r);
           const last = r.shots[r.shots.length - 1];
           longest = Math.max(longest, r.shots.length);
           if (r.reason === 'winner') { team[r.winner].win++; ps(last.hitter, last.side).win++; } else { team[last.side].err++; ps(last.hitter, last.side).err++; }
