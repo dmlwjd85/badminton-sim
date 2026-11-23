@@ -2,7 +2,7 @@
 import { doc, setDoc, getDoc, collection, writeBatch, getDocs, deleteDoc, deleteField } from 'firebase/firestore';
 import { featureOn } from '../config/features.js';
 import { checkAuthReady, db } from './boot.js';
-import { appId, ALLOWED_PLAYERS, INITIAL_PLAYERS, getSafeDocId, GENDER_MAP, POS_KR, STAT_BASE, STAT_KEYS } from './constants.js';
+import { appId, ALLOWED_PLAYERS, INITIAL_PLAYERS, RENAMED_PLAYERS, getSafeDocId, GENDER_MAP, POS_KR, STAT_BASE, STAT_KEYS } from './constants.js';
 import { getStat, getBonusStats, getOVR, getOVRForPos, getWeeklyWage, getExpNeeded, applyLevelStatGrowth } from './stats.js';
 import { triggerConfetti, animateFloatText } from './ui.js';
 import { canEditThisPlayer, emptyActivityCounts, seasonResetSentence, getWeekNumber, getKstDateStr, escapeHtml, playerDisplayName } from './utils.js';
@@ -434,11 +434,31 @@ window.customAlert(`선수 등록 에러:\n${e.message}`);
  * 마스터가 들어올 때 확인창을 띄우고, 끝나면 표시를 남겨 다시 묻지 않아요.
  */
 let cleanupAsked = false;
+/** 이름 바꾸기: 예전 이름 문서의 기록(능력치·팀·포지션 등)을 새 이름 문서로 옮기고 예전 문서는 지워요 */
+async function migrateRenamedPlayers() {
+for (const [oldName, newName] of Object.entries(RENAMED_PLAYERS)) {
+const oldRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', 'player_' + getSafeDocId(oldName));
+const newRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', 'player_' + getSafeDocId(newName));
+const oldSnap = await getDoc(oldRef);
+if (!oldSnap.exists()) continue;
+const newSnap = await getDoc(newRef);
+const batch = writeBatch(db);
+batch.set(newRef, { ...oldSnap.data(), ...(newSnap.exists() ? newSnap.data() : {}), name: newName }, { merge: true });
+batch.delete(oldRef);
+await batch.commit();
+const k = ALLOWED_PLAYERS.indexOf(oldName);
+if (k > -1) ALLOWED_PLAYERS.splice(k, 1);
+if (GENDER_MAP[oldName]) { GENDER_MAP[newName] = GENDER_MAP[oldName]; delete GENDER_MAP[oldName]; }
+if (window.selectedPlayerId === getSafeDocId(oldName)) window.selectedPlayerId = getSafeDocId(newName);
+}
+}
+
 export async function cleanupRosterOnce() {
 if (cleanupAsked || !window.playerState || !window.playerState.isGM) return;
 cleanupAsked = true;
 try {
 checkAuthReady();
+await migrateRenamedPlayers();
 const flagRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'rosterCleanup_v2');
 const flag = await getDoc(flagRef);
 if (flag.exists() && flag.data().done) return;

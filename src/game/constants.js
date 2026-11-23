@@ -5,7 +5,9 @@
 export const appId = (import.meta.env && import.meta.env.VITE_APP_ID) || (typeof globalThis.__app_id !== 'undefined' ? globalThis.__app_id : 'sambong-badminton');
 
 /** 처음 명단. 더 넣을 사람은 마스터J가 '신규 선수 등록'으로 넣어요 */
-export const INITIAL_PLAYERS = ['백소윤', '정지은', '정예람', '박정민', '정의정', '고새연', '박도담', '신희영', '김병우'];
+/** 이름을 바꾼 선수 (예전 이름 → 새 이름). 마스터가 들어올 때 서버 기록을 새 이름으로 옮겨요 */
+export const RENAMED_PLAYERS = { '백소윤': '백소연' };
+export const INITIAL_PLAYERS = ['백소연', '정지은', '정예람', '박정민', '정의정', '고새연', '박도담', '신희영', '김병우'];
 
 export let ALLOWED_PLAYERS = [...INITIAL_PLAYERS];
 
