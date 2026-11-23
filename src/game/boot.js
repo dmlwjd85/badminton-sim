@@ -26,7 +26,8 @@ let subscribed = false;
 const autoPosDone = new Set();
 export function autoAssignUndecidedPositions() {
 if (!window.playerState || !window.playerState.isGM || !db) return;
-const todo = (window.allPlayersData || []).filter((p) => (!p.pos || p.pos === '미정') && !autoPosDone.has(p.id));
+// 서버에 있거나 처음 명단에 있는 선수만 (지운 선수를 포지션 저장으로 되살리지 않게)
+const todo = (window.allPlayersData || []).filter((p) => (p.fromDb || INITIAL_PLAYERS.includes(p.name)) && (!p.pos || p.pos === '미정') && !autoPosDone.has(p.id));
 if (!todo.length) return;
 const batch = writeBatch(db);
 const now = new Date().toISOString();
