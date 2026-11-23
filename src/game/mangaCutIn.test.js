@@ -7,11 +7,12 @@ import {
   shouldSkipMangaCutIn,
 } from './sim/mangaCutIn.js';
 
-test('시험 속도(ts=0)와 움직임 줄이기에서는 한 컷을 건너뛴다', () => {
+test('시험 속도(ts=0)에서만 한 컷을 건너뛰고, 움직임 줄이기에서는 보여 준다', () => {
   assert.equal(shouldSkipMangaCutIn({ timeScale: 0, reducedMotion: false }), true);
-  assert.equal(shouldSkipMangaCutIn({ timeScale: 1, reducedMotion: true }), true);
+  assert.equal(shouldSkipMangaCutIn({ timeScale: 0, reducedMotion: true }), true);
+  assert.equal(shouldSkipMangaCutIn({ timeScale: 1, reducedMotion: true }), false);
   assert.equal(shouldSkipMangaCutIn({ timeScale: 1, reducedMotion: false }), false);
-  assert.equal(shouldSkipMangaCutIn({ timeScale: 0.45, reducedMotion: false }), false);
+  assert.equal(shouldSkipMangaCutIn({ timeScale: 0.28, reducedMotion: false }), false);
 });
 
 test('큰 장면 몇 가지에만 한 컷을 붙이고, 성별로 그림을 고른다', () => {
