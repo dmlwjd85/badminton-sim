@@ -2,7 +2,7 @@
 import { doc, setDoc, getDoc, collection, writeBatch, getDocs, deleteDoc, deleteField } from 'firebase/firestore';
 import { featureOn } from '../config/features.js';
 import { checkAuthReady, db } from './boot.js';
-import { appId, ALLOWED_PLAYERS, getSafeDocId, GENDER_MAP, POS_KR, STAT_BASE, STAT_KEYS } from './constants.js';
+import { appId, ALLOWED_PLAYERS, INITIAL_PLAYERS, getSafeDocId, GENDER_MAP, POS_KR, STAT_BASE, STAT_KEYS } from './constants.js';
 import { getStat, getBonusStats, getOVR, getOVRForPos, getWeeklyWage, getExpNeeded, applyLevelStatGrowth } from './stats.js';
 import { triggerConfetti, animateFloatText } from './ui.js';
 import { canEditThisPlayer, emptyActivityCounts, seasonResetSentence, getWeekNumber, getKstDateStr, escapeHtml, playerDisplayName } from './utils.js';
@@ -428,6 +428,45 @@ console.error("추가 에러:", e);
 window.customAlert(`선수 등록 에러:\n${e.message}`);
 }
 };
+
+/**
+ * 한 번만: 처음 명단(INITIAL_PLAYERS) 9명 말고 서버에 남아 있는 선수(예전 풋살 명단 등)를 지워요.
+ * 마스터가 들어올 때 확인창을 띄우고, 끝나면 표시를 남겨 다시 묻지 않아요.
+ */
+let cleanupAsked = false;
+export async function cleanupRosterOnce() {
+if (cleanupAsked || !window.playerState || !window.playerState.isGM) return;
+cleanupAsked = true;
+try {
+checkAuthReady();
+const flagRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'rosterCleanup_v1');
+const flag = await getDoc(flagRef);
+if (flag.exists() && flag.data().done) return;
+const keep = new Set([...INITIAL_PLAYERS.map((n) => getSafeDocId(n)), 'gm1', 'gm2']);
+const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'players'));
+const extra = [];
+snap.forEach((d) => {
+const id = d.id.replace(/^player_/, '');
+if (!keep.has(id)) extra.push({ ref: doc(db, 'artifacts', appId, 'public', 'data', 'players', d.id), name: (d.data() && d.data().name) || id });
+});
+if (!extra.length) { await setDoc(flagRef, { done: true, at: new Date().toISOString(), removed: [] }); return; }
+const ok = await window.customConfirm(`처음 명단 ${INITIAL_PLAYERS.length}명(${INITIAL_PLAYERS.join(', ')}) 말고 ${extra.length}명이 더 들어 있어요.\n(${extra.slice(0, 8).map((x) => x.name).join(', ')}${extra.length > 8 ? ' …' : ''})\n\n이 ${extra.length}명을 모두 지울까요? 되돌릴 수 없어요.`);
+if (!ok) { cleanupAsked = false; return; }
+for (let i = 0; i < extra.length; i += 400) {
+const batch = writeBatch(db);
+extra.slice(i, i + 400).forEach((x) => batch.delete(x.ref));
+await batch.commit();
+}
+extra.forEach((x) => { const k = ALLOWED_PLAYERS.indexOf(x.name); if (k > -1) ALLOWED_PLAYERS.splice(k, 1); delete GENDER_MAP[x.name]; });
+await setDoc(flagRef, { done: true, at: new Date().toISOString(), removed: extra.map((x) => x.name) });
+window.customAlert(`🗑️ ${extra.length}명을 지웠어요. 이제 처음 명단 ${INITIAL_PLAYERS.length}명만 남았어요.`);
+} catch (e) {
+cleanupAsked = false;
+console.error('cleanupRosterOnce Error:', e);
+window.customAlert(`명단 정리 에러:\n${e.message}`);
+}
+}
+window.cleanupRosterOnce = cleanupRosterOnce;
 
 window.deletePlayer = async (pId, pName) => {
 try {
