@@ -13,6 +13,7 @@ import { simSlotTeam, simSlotName, countSimTeam, getSimLineup, genderOf } from '
 import { getStat } from '../stats.js';
 import { escapeHtml, sleep } from '../utils.js';
 import { josa } from './josa.js';
+import { pickBdMangaScene, preloadMangaCutIns, showMangaCutIn } from './mangaCutIn.js';
 
 const FORMATS = {
   '1x15': { games: 1, target: 15, cap: 21, label: '15점 1게임' },
@@ -99,6 +100,7 @@ window.runSimMatch = async () => {
   window.__simLastLog = [];
   const court = liveCourt;
   court.timeScale = ts;
+  preloadMangaCutIns();
   court.setKits(simSlotTeam('A'), simSlotTeam('B'));
   court.flip = false;
 
@@ -118,7 +120,9 @@ window.runSimMatch = async () => {
     if (h.player) { if (h.blunder) ps(h.player, h.side).blunder++; else ps(h.player, h.side).hl++; }
     hlLog.push({ key: h.key, side: h.side, name: h.player ? h.player.name : '', blunder: !!h.blunder });
     if (final && !h.blunder && BIG.has(h.key) && ts > 0) { try { confetti({ particleCount: 70, spread: 70, origin: { y: 0.45 }, zIndex: 9999, disableForReducedMotion: true, colors: [H.color, '#ffffff', '#fde047'] }); } catch (e) { /* 무시 */ } }
-    await court.wait(final ? 1100 : 650);
+    const mangaId = !h.blunder ? pickBdMangaScene(h.key) : null;
+    if (mangaId) await showMangaCutIn(mangaId, { timeScale: ts });
+    else await court.wait(final ? 1100 : 650);
   };
   const eff = (p, k) => getStat(p, k) * (0.86 + 0.14 * ((stamina[p.id] ?? 100) / 100));
   const log = (html, cls = '') => {
