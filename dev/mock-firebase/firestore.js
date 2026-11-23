@@ -33,7 +33,8 @@ export const writeBatch = () => {
   const ops = [];
   return {
     set: (ref, data, opts) => { ops.push([ref, data, opts]); },
-    commit: async () => { ops.forEach(([r, d, o]) => write(r.path, d, !!(o && o.merge))); fire(); },
+    delete: (ref) => { ops.push([ref, null]); },
+    commit: async () => { ops.forEach(([r, d, o]) => { if (d === null) store.delete(r.path); else write(r.path, d, !!(o && o.merge)); }); fire(); },
   };
 };
 export const onSnapshot = (ref, cb) => {
