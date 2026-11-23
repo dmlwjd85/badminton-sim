@@ -59,6 +59,16 @@ export function pickBdMangaScene(key, gender) {
   return `bd-${scene}-${g}`;
 }
 
+/** 한 모의경기에서 만화 한 컷은 이 횟수까지만 띄워요. */
+export const MANGA_PER_MATCH_CAP = 4;
+/** 스매시 위닝인데 이름표가 안 나왔을 때, 그림을 보강할 확률 */
+export const BONUS_SMASH_P = 0.5;
+
+/** 스매시로 점수를 냈는데 큰 장면 이름표가 없으면, 스매시 그림을 보강할지 */
+export function shouldBonusSmashCutIn({ reason, lastType, alreadyManga, remaining } = {}) {
+  return remaining > 0 && !alreadyManga && reason === 'winner' && lastType === 'smash';
+}
+
 let current = null;
 
 export function preloadMangaCutIns(ids = BD_PRELOAD_IDS) {
